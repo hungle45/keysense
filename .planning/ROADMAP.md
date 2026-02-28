@@ -40,7 +40,10 @@
 9. UI adapts to portrait orientation on mobile devices
 10. All interactive elements have minimum 44x44px touch targets
 
-**Plans:** TBD
+**Plans:** 1 plan
+
+**Plan list:**
+- [ ] 01-audio-foundation-01-PLAN.md — Audio foundation: microphone permission, AudioContext singleton, calibration
 
 ---
 
@@ -126,7 +129,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Audio Foundation | 0/1 | Not started | - |
+| 1. Audio Foundation | 1/1 | Ready to execute | - |
 | 2. Pitch Detection | 0/1 | Not started | - |
 | 3. Game Loop | 0/1 | Not started | - |
 | 4. Rhythm Module | 0/1 | Not started | - |
