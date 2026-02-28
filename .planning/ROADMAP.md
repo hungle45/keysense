@@ -87,7 +87,12 @@
 5. Session displays elapsed time and remaining time in real-time
 6. Session ends with a score summary showing accuracy percentage
 
-**Plans:** TBD
+**Plans:** 3 plans
+
+**Plan list:**
+- [ ] 03-01-PLAN.md — Game types, state machine (useGameSession), note generation
+- [ ] 03-02-PLAN.md — Session config UI, countdown splash, grand staff visualization
+- [ ] 03-03-PLAN.md — Hit detection integration, results modal, full game wiring
 
 ---
 
@@ -134,7 +139,7 @@
 |-------|----------------|--------|-----------|
 | 1. Audio Foundation | 1/1 | Complete | 2026-02-28 |
 | 2. Pitch Detection | 1/1 | Complete | 2026-02-28 |
-| 3. Game Loop | 0/1 | Not started | - |
+| 3. Game Loop | 0/3 | Not started | - |
 | 4. Rhythm Module | 0/1 | Not started | - |
 | 5. Notation Viewer | 0/1 | Not started | - |
 
