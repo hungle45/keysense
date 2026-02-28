@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mic, MicOff, Loader2 } from 'lucide-react';
-import { useAudioEngine } from '@/hooks/useAudioEngine';
 
 interface MicrophoneButtonProps {
   onGranted?: (stream: MediaStream) => void;
+  requestMicrophone: () => Promise<{ audioContext: AudioContext | null; stream: MediaStream | null; error: unknown }>;
+  permissionState: string;
 }
 
-export function MicrophoneButton({ onGranted }: MicrophoneButtonProps) {
-  const { permissionState, requestMicrophone } = useAudioEngine();
+export function MicrophoneButton({ onGranted, requestMicrophone, permissionState }: MicrophoneButtonProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleClick = async () => {

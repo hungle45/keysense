@@ -13,18 +13,9 @@ type Screen = 'home' | 'settings';
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [micEnabled, setMicEnabled] = useState(false);
-
-  const handleMicrophoneGranted = (newStream: MediaStream) => {
-    setStream(newStream);
-    setMicEnabled(true);
-  };
-
-  const handleMicrophoneDisconnect = () => {
-    setStream(null);
-    setMicEnabled(false);
-  };
+  
+  // Lift useAudioEngine to App level so all children share the same instance
+  const { audioContext, stream, isReady, requestMicrophone, permissionState } = useAudioEngine();
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -48,9 +39,11 @@ function App() {
       <main className="flex-1 flex items-center justify-center p-4">
         {currentScreen === 'home' ? (
           <HomeScreen 
-            micEnabled={micEnabled} 
-            onMicrophoneGranted={handleMicrophoneGranted}
-            onMicrophoneDisconnect={handleMicrophoneDisconnect}
+            audioContext={audioContext}
+            stream={stream}
+            isReady={isReady}
+            requestMicrophone={requestMicrophone}
+            permissionState={permissionState}
           />
         ) : (
           <SettingsScreen stream={stream} />
@@ -80,13 +73,14 @@ function App() {
 }
 
 interface HomeScreenProps {
-  micEnabled: boolean;
-  onMicrophoneGranted: (stream: MediaStream) => void;
-  onMicrophoneDisconnect: () => void;
+  audioContext: AudioContext | null;
+  stream: MediaStream | null;
+  isReady: boolean;
+  requestMicrophone: () => Promise<{ audioContext: AudioContext | null; stream: MediaStream | null; error: unknown }>;
+  permissionState: string;
 }
 
-function HomeScreen({ micEnabled, onMicrophoneGranted }: HomeScreenProps) {
-  const { audioContext, stream, isReady } = useAudioEngine();
+function HomeScreen({ audioContext, stream, isReady, requestMicrophone, permissionState }: HomeScreenProps) {
   const { noiseFloor } = useCalibration();
 
   const { pitch } = usePitchDetection(
@@ -94,6 +88,8 @@ function HomeScreen({ micEnabled, onMicrophoneGranted }: HomeScreenProps) {
     isReady && stream ? stream : null,
     { noiseFloor }
   );
+
+  const micEnabled = permissionState === 'granted';
 
   return (
     <div className="w-full max-w-md space-y-8">
@@ -108,7 +104,7 @@ function HomeScreen({ micEnabled, onMicrophoneGranted }: HomeScreenProps) {
       </div>
 
       <div className="flex justify-center">
-        <MicrophoneButton onGranted={onMicrophoneGranted} />
+        <MicrophoneButton onGranted={() => {}} requestMicrophone={requestMicrophone} permissionState={permissionState} />
       </div>
 
       {micEnabled && (
