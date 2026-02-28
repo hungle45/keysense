@@ -9,9 +9,11 @@ import type { PitchResult } from '@/types/pitch';
 // NOISE GATE & STABILIZATION CONFIGURATION
 // ============================================================================
 
-// Noise gate multiplier: currentRMS must be > noiseFloor * this value
-// 2.5x provides good margin above ambient noise without missing soft notes
-const NOISE_GATE_MULTIPLIER = 2.5;
+// HYSTERESIS GATE: Two thresholds for smooth open/close behavior
+// - OPEN threshold: Signal must exceed this to START detecting (more selective)
+// - CLOSE threshold: Signal must drop below this to STOP detecting (allows fade-out)
+const GATE_OPEN_MULTIPLIER = 1.5;   // noiseFloor * 1.5 to open gate
+const GATE_CLOSE_MULTIPLIER = 1.1;  // noiseFloor * 1.1 to close gate
 
 // Default noise floor RMS if calibration hasn't run
 // Very conservative - will gate most silence
@@ -19,7 +21,7 @@ const DEFAULT_NOISE_FLOOR_RMS = 0.001;
 
 // Consecutive frame consistency: note must be detected N times in a row
 // before updating the UI. Prevents single-frame ghost notes.
-const CONSECUTIVE_FRAMES_REQUIRED = 3;
+const CONSECUTIVE_FRAMES_REQUIRED = 2;
 
 // Silence frame threshold: how many silent frames before clearing display
 const SILENCE_FRAMES_TO_CLEAR = 5;
@@ -31,6 +33,14 @@ const SILENCE_FRAMES_TO_CLEAR = 5;
 export interface UsePitchDetectionOptions {
   noiseFloor: number | null;      // dB value (for display only, not used in gate)
   noiseFloorRMS: number | null;   // Linear RMS value (used for noise gate)
+}
+
+// Debug info for RMS visual feedback
+export interface RMSDebugInfo {
+  currentRMS: number;
+  openThreshold: number;
+  closeThreshold: number;
+  gateOpen: boolean;
 }
 
 interface ConsistencyState {
@@ -50,11 +60,20 @@ export function usePitchDetection(
 ) {
   const [pitch, setPitch] = useState<PitchResult | null>(null);
   const [isDetecting, setIsDetecting] = useState(false);
+  const [rmsDebug, setRmsDebug] = useState<RMSDebugInfo>({
+    currentRMS: 0,
+    openThreshold: 0,
+    closeThreshold: 0,
+    gateOpen: false,
+  });
 
   const detectorRef = useRef<PitchDetectorWrapper | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  
+  // Hysteresis gate state
+  const gateOpenRef = useRef<boolean>(false);
   
   // Consecutive frame consistency tracking
   const consistencyRef = useRef<ConsistencyState>({
@@ -82,13 +101,33 @@ export function usePitchDetection(
     // Calculate LINEAR RMS (0 to 1 scale, NOT decibels)
     const currentRMS = calculateRMS(dataArray);
 
-    // NOISE GATE: Check if signal is above threshold BEFORE running pitch detector
-    // This is the primary defense against ghost notes
+    // HYSTERESIS NOISE GATE: Two thresholds for smooth behavior
+    // - Need higher signal to OPEN gate (start detecting)
+    // - Can stay open with lower signal (allow natural note decay)
     const noiseFloorRMS = options.noiseFloorRMS ?? DEFAULT_NOISE_FLOOR_RMS;
-    const gateThreshold = noiseFloorRMS * NOISE_GATE_MULTIPLIER;
+    const openThreshold = noiseFloorRMS * GATE_OPEN_MULTIPLIER;
+    const closeThreshold = noiseFloorRMS * GATE_CLOSE_MULTIPLIER;
     
-    if (currentRMS < gateThreshold) {
-      // Below noise gate - DON'T run pitch detector at all
+    // Update gate state using hysteresis logic
+    if (!gateOpenRef.current && currentRMS >= openThreshold) {
+      // Gate was closed, signal exceeded open threshold - OPEN IT
+      gateOpenRef.current = true;
+    } else if (gateOpenRef.current && currentRMS < closeThreshold) {
+      // Gate was open, signal dropped below close threshold - CLOSE IT
+      gateOpenRef.current = false;
+    }
+    // Otherwise: gate stays in current state (hysteresis zone)
+    
+    // Update RMS debug info for visual feedback (throttle updates)
+    setRmsDebug({
+      currentRMS,
+      openThreshold,
+      closeThreshold,
+      gateOpen: gateOpenRef.current,
+    });
+    
+    if (!gateOpenRef.current) {
+      // Gate is closed - DON'T run pitch detector at all
       silentFrameCountRef.current++;
       
       if (silentFrameCountRef.current >= SILENCE_FRAMES_TO_CLEAR) {
@@ -102,7 +141,7 @@ export function usePitchDetection(
       return;
     }
 
-    // Above noise gate - reset silence counter and run pitch detector
+    // Gate is open - reset silence counter and run pitch detector
     silentFrameCountRef.current = 0;
     
     const result = detector.findPitch(dataArray, sampleRate);
@@ -189,5 +228,5 @@ export function usePitchDetection(
     };
   }, [audioContext, stream, detect]);
 
-  return { pitch, isDetecting };
+  return { pitch, isDetecting, rmsDebug };
 }

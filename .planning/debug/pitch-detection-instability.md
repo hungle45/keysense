@@ -2,15 +2,15 @@
 status: awaiting_human_verify
 trigger: "Ghost notes appearing when room is quiet. Noise floor showing as negative dB value confusing the logic. User requests complete rewrite of detection/calibration."
 created: 2026-02-28T10:00:00Z
-updated: 2026-03-01T10:15:00Z
+updated: 2026-03-01T11:20:00Z
 ---
 
 ## Current Focus
 
-hypothesis: CONFIRMED - dB-based noise floor logic was fundamentally flawed; implemented pure linear RMS with strict gate
-test: User needs to verify no ghost notes appear in quiet room
-expecting: "Play a note" displays steadily in silence, real notes detected when played
-next_action: Human verification of fix
+hypothesis: Hysteresis gate with visual feedback will provide better balance - easier to detect notes while still rejecting silence
+test: User needs to verify detection sensitivity is improved
+expecting: Notes detected more easily while silence still shows "Play a note"
+next_action: Human verification of hysteresis gate behavior
 
 ## Symptoms
 
@@ -62,6 +62,11 @@ started: Ongoing issue despite previous fixes (2x RMS threshold, 0.9 clarity)
   found: Media constraints already correctly set: echoCancellation=false, noiseSuppression=false, autoGainControl=false
   implication: Requirement #3 already satisfied
 
+- timestamp: 2026-03-01T11:15:00Z
+  checked: User feedback on previous fix
+  found: Gate was TOO AGGRESSIVE with 2.5x multiplier and 3-frame requirement
+  implication: Need to implement hysteresis and lower thresholds per user requirements
+
 ## Resolution
 
 root_cause: Multiple issues compounding: (1) Calibration used 90th percentile instead of average RMS, (2) Volume gate multiplier too low (2x vs needed 2.5x), (3) Detector ran on silence instead of being gated first, (4) Frequency bounds too wide (20-5000Hz vs 27-4200Hz piano range), (5) No consecutive frame consistency check
@@ -87,11 +92,39 @@ fix: |
      - autoGainControl: false
      - echoCancellation: false
      - noiseSuppression: false
+     
+  **ITERATION 2 (2026-03-01T11:00:00Z):**
+  User feedback: Gate TOO AGGRESSIVE - difficult to trigger notes.
+  New requirements from user:
+  - Lower multiplier from 2.5x to 1.5x for open threshold
+  - Implement hysteresis: 1.5x to OPEN gate, 1.1x to KEEP gate open
+  - Reduce consecutive frames from 3 to 2
+  - Add visual RMS debug bar showing currentRMS vs threshold
+  
+  **Changes implemented:**
+  1. **usePitchDetection.ts** - Hysteresis gate:
+     - GATE_OPEN_MULTIPLIER = 1.5 (to start detecting)
+     - GATE_CLOSE_MULTIPLIER = 1.1 (to stop detecting)
+     - CONSECUTIVE_FRAMES_REQUIRED = 2
+     - Added gateOpenRef to track hysteresis state
+     - Exports RMSDebugInfo for visual feedback
+  
+  2. **TunerDisplay.tsx** - Visual RMS debug bar:
+     - Shows current RMS as colored bar (green when gate open, red when closed)
+     - Shows close threshold marker (yellow line)
+     - Shows open threshold marker (green line)
+     - Displays numeric values for RMS and thresholds
+     - Gate state indicator (🟢 OPEN / 🔴 CLOSED)
+  
+  3. **App.tsx** - Pass rmsDebug to TunerDisplay
+  
 verification: |
   - TypeScript compilation: PASSED
   - Production build: PASSED
   - Awaiting human verification in real environment
 files_changed:
-  - src/hooks/usePitchDetection.ts (complete rewrite)
+  - src/hooks/usePitchDetection.ts (hysteresis gate + RMS export)
   - src/hooks/useCalibration.ts (percentile -> average)
   - src/lib/pitch/detector.ts (frequency bounds tightened)
+  - src/components/tuner/TunerDisplay.tsx (RMS debug bar)
+  - src/App.tsx (pass rmsDebug prop)

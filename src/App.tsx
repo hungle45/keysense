@@ -83,7 +83,7 @@ interface HomeScreenProps {
 function HomeScreen({ audioContext, stream, isReady, requestMicrophone, permissionState }: HomeScreenProps) {
   const { noiseFloor, noiseFloorRMS } = useCalibration();
 
-  const { pitch } = usePitchDetection(
+  const { pitch, rmsDebug } = usePitchDetection(
     isReady && audioContext ? audioContext : null,
     isReady && stream ? stream : null,
     { noiseFloor, noiseFloorRMS }
@@ -115,7 +115,7 @@ function HomeScreen({ audioContext, stream, isReady, requestMicrophone, permissi
           </CardHeader>
           <CardContent>
             <div className="flex justify-center py-4">
-              <TunerDisplay pitch={pitch} />
+              <TunerDisplay pitch={pitch} rmsDebug={rmsDebug} />
             </div>
           </CardContent>
         </Card>
