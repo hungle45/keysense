@@ -63,6 +63,7 @@ Recent decisions affecting current work:
 
 - commit gitgnore files (tooling)
 - add github workflow to auto deploy this project using github pages (tooling)
+- create makefile to quick run command (tooling)
 
 ### Blockers/Concerns
 
