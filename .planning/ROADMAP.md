@@ -63,7 +63,10 @@
 4. Visual tuner shows detected note with cents deviation (sharp/flat/in-tune)
 5. Pitch detection ignores input below calibrated noise floor threshold
 
-**Plans:** TBD
+**Plans:** 1 plan
+
+**Plan list:**
+- [ ] 02-pitch-detection-01-PLAN.md — Real-time pitch detection with tuner display
 
 ---
 
@@ -130,7 +133,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Audio Foundation | 1/1 | Ready to execute | - |
-| 2. Pitch Detection | 0/1 | Not started | - |
+| 2. Pitch Detection | 0/1 | Ready to execute | - |
 | 3. Game Loop | 0/1 | Not started | - |
 | 4. Rhythm Module | 0/1 | Not started | - |
 | 5. Notation Viewer | 0/1 | Not started | - |
