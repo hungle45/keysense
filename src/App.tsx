@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { Settings, Home as HomeIcon, Mic } from 'lucide-react';
 import { MicrophoneButton } from '@/components/audio/MicrophoneButton';
 import { CalibrationView } from '@/components/audio/CalibrationView';
+import { TunerDisplay } from '@/components/tuner/TunerDisplay';
+import { useAudioEngine } from '@/hooks/useAudioEngine';
+import { useCalibration } from '@/hooks/useCalibration';
+import { usePitchDetection } from '@/hooks/usePitchDetection';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -82,6 +86,15 @@ interface HomeScreenProps {
 }
 
 function HomeScreen({ micEnabled, onMicrophoneGranted }: HomeScreenProps) {
+  const { audioContext, stream, isReady } = useAudioEngine();
+  const { noiseFloor } = useCalibration();
+
+  const { pitch } = usePitchDetection(
+    isReady && audioContext ? audioContext : null,
+    isReady && stream ? stream : null,
+    { noiseFloor }
+  );
+
   return (
     <div className="w-full max-w-md space-y-8">
       <div className="text-center space-y-2">
@@ -102,12 +115,12 @@ function HomeScreen({ micEnabled, onMicrophoneGranted }: HomeScreenProps) {
         <Card>
           <CardHeader>
             <CardTitle>Tuner Display</CardTitle>
-            <CardDescription>Your tuner will appear here</CardDescription>
+            <CardDescription>Detected pitch</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground text-center py-8">
-              Microphone is enabled. Pitch detection coming in Phase 2.
-            </p>
+            <div className="flex justify-center py-4">
+              <TunerDisplay pitch={pitch} />
+            </div>
           </CardContent>
         </Card>
       )}

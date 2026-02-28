@@ -41,3 +41,47 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+.tuner-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  gap: 1rem;
+}
+
+.tuner-waiting {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.waiting-text {
+  font-size: 1.5rem;
+  color: var(--color-muted-foreground);
+}
+
+.note-display {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+
+.note-name {
+  font-size: 5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.note-octave {
+  font-size: 2rem;
+  font-weight: 500;
+  color: var(--color-muted-foreground);
+}
+
+.cents-display {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
