@@ -81,12 +81,12 @@ interface HomeScreenProps {
 }
 
 function HomeScreen({ audioContext, stream, isReady, requestMicrophone, permissionState }: HomeScreenProps) {
-  const { noiseFloor } = useCalibration();
+  const { noiseFloor, noiseFloorRMS } = useCalibration();
 
   const { pitch } = usePitchDetection(
     isReady && audioContext ? audioContext : null,
     isReady && stream ? stream : null,
-    { noiseFloor }
+    { noiseFloor, noiseFloorRMS }
   );
 
   const micEnabled = permissionState === 'granted';

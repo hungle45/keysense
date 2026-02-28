@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { createPitchDetector, PitchDetectorWrapper } from '@/lib/pitch/detector';
 import { frequencyToNote } from '@/lib/pitch/notes';
 import { calculateCents } from '@/lib/pitch/cents';
-import { calculateRMS, rmsToDecibels } from '@/lib/audio/analyser';
+import { calculateRMS } from '@/lib/audio/analyser';
 import type { PitchResult } from '@/types/pitch';
 
 // ============================================================================
@@ -62,6 +62,7 @@ function getMostFrequentNote(buffer: PitchResult[]): PitchResult | null {
 
 export interface UsePitchDetectionOptions {
   noiseFloor: number | null;
+  noiseFloorRMS: number | null;
 }
 
 export function usePitchDetection(
@@ -100,13 +101,16 @@ export function usePitchDetection(
     analyser.getFloatTimeDomainData(dataArray);
 
     const rms = calculateRMS(dataArray);
-    const db = rmsToDecibels(rms);
-
-    const effectiveNoiseFloor = options.noiseFloor !== null ? options.noiseFloor : -60;
     const now = performance.now();
 
-    // Check if we're above the noise floor (sound detected)
-    if (db > effectiveNoiseFloor + 10) {
+    // VOLUME GATE: Require current RMS to be at least 2x the calibrated noise floor RMS
+    // This prevents ghost notes from background noise
+    const effectiveNoiseFloorRMS = options.noiseFloorRMS !== null ? options.noiseFloorRMS : 0.001;
+    const volumeThreshold = effectiveNoiseFloorRMS * 2;
+    const isAboveThreshold = rms >= volumeThreshold;
+
+    // Check if we're above the volume gate threshold (sound detected)
+    if (isAboveThreshold) {
       // Reset silence counter - we have sound
       silentFrameCountRef.current = 0;
       

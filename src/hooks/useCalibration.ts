@@ -6,6 +6,7 @@ import type { CalibrationResult } from '@/types/audio';
 
 export function useCalibration() {
   const [noiseFloor, setNoiseFloor] = useState<number | null>(null);
+  const [noiseFloorRMS, setNoiseFloorRMS] = useState<number | null>(null);
   const [frequencyRange, setFrequencyRange] = useState<{ min: number; max: number } | null>(null);
   const [isCalibrating, setIsCalibrating] = useState(false);
   const [currentDb, setCurrentDb] = useState<number>(-100);
@@ -56,14 +57,16 @@ export function useCalibration() {
     sourceRef.current = source;
     source.connect(analyser);
     
-    const readings: number[] = [];
+    const dbReadings: number[] = [];
+    const rmsReadings: number[] = [];
     
     return new Promise((resolve) => {
       intervalRef.current = setInterval(() => {
         const dataArray = getTimeDomainData(analyser);
         const rms = calculateRMS(dataArray);
         const db = rmsToDecibels(rms);
-        readings.push(db);
+        dbReadings.push(db);
+        rmsReadings.push(rms);
         setCurrentDb(db);
       }, CALIBRATION_SAMPLE_INTERVAL_MS);
       
@@ -73,12 +76,17 @@ export function useCalibration() {
           intervalRef.current = null;
         }
         
-        if (readings.length > 0) {
-          readings.sort((a, b) => a - b);
-          const percentileIndex = Math.floor(readings.length * 0.9);
-          const noiseFloorValue = readings[percentileIndex] || readings[readings.length - 1];
+        if (dbReadings.length > 0) {
+          // Sort and get 90th percentile for both dB and RMS
+          dbReadings.sort((a, b) => a - b);
+          rmsReadings.sort((a, b) => a - b);
+          
+          const percentileIndex = Math.floor(dbReadings.length * 0.9);
+          const noiseFloorValue = dbReadings[percentileIndex] || dbReadings[dbReadings.length - 1];
+          const noiseFloorRMSValue = rmsReadings[percentileIndex] || rmsReadings[rmsReadings.length - 1];
           
           setNoiseFloor(noiseFloorValue);
+          setNoiseFloorRMS(noiseFloorRMSValue);
           
           const freqRange = detectFrequencyRange(analyser);
           setFrequencyRange(freqRange);
@@ -87,12 +95,14 @@ export function useCalibration() {
           
           resolve({
             noiseFloor: noiseFloorValue,
+            noiseFloorRMS: noiseFloorRMSValue,
             frequencyRange: freqRange,
           });
         } else {
           setIsCalibrating(false);
           resolve({
             noiseFloor: -60,
+            noiseFloorRMS: 0.001, // Very low default RMS
             frequencyRange: { min: PIANO_MIN_FREQ, max: PIANO_MAX_FREQ },
           });
         }
@@ -102,6 +112,7 @@ export function useCalibration() {
 
   const reset = useCallback(() => {
     setNoiseFloor(null);
+    setNoiseFloorRMS(null);
     setFrequencyRange(null);
     setIsCalibrating(false);
     setCurrentDb(-100);
@@ -120,6 +131,7 @@ export function useCalibration() {
 
   return {
     noiseFloor,
+    noiseFloorRMS,
     frequencyRange,
     isCalibrating,
     currentDb,

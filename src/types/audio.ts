@@ -7,7 +7,8 @@ export interface AudioEngineState {
 }
 
 export interface CalibrationResult {
-  noiseFloor: number;
+  noiseFloor: number;       // dB value for display
+  noiseFloorRMS: number;    // Raw RMS value for gate comparison
   frequencyRange: {
     min: number;
     max: number;
@@ -16,6 +17,7 @@ export interface CalibrationResult {
 
 export interface CalibrationState {
   noiseFloor: number | null;
+  noiseFloorRMS: number | null;
   frequencyRange: { min: number; max: number } | null;
   isCalibrating: boolean;
 }
