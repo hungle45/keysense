@@ -10,7 +10,7 @@
 ## Phases
 
 - [ ] **Phase 1: Audio Foundation** - Microphone capture, calibration, mobile UX foundation
-- [ ] **Phase 2: Pitch Detection** - Real-time pitch detection with tuner display
+- [x] **Phase 2: Pitch Detection** - Real-time pitch detection with tuner display (Complete: 2026-02-28)
 - [ ] **Phase 3: Game Loop** - Timed practice sessions with scoring
 - [ ] **Phase 4: Rhythm Module** - BPM-based timing practice
 - [ ] **Phase 5: Notation Viewer** - ABC notation rendering
@@ -66,7 +66,7 @@
 **Plans:** 1 plan
 
 **Plan list:**
-- [ ] 02-pitch-detection-01-PLAN.md — Real-time pitch detection with tuner display
+- [x] 02-pitch-detection-01-PLAN.md — Real-time pitch detection with tuner display
 
 ---
 
@@ -132,8 +132,8 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Audio Foundation | 1/1 | Ready to execute | - |
-| 2. Pitch Detection | 0/1 | Ready to execute | - |
+| 1. Audio Foundation | 1/1 | Complete | 2026-02-28 |
+| 2. Pitch Detection | 1/1 | Complete | 2026-02-28 |
 | 3. Game Loop | 0/1 | Not started | - |
 | 4. Rhythm Module | 0/1 | Not started | - |
 | 5. Notation Viewer | 0/1 | Not started | - |
@@ -151,11 +151,11 @@
 | CALI-01 | Phase 1 | Pending |
 | CALI-02 | Phase 1 | Pending |
 | CALI-03 | Phase 1 | Pending |
-| PITCH-01 | Phase 2 | Pending |
-| PITCH-02 | Phase 2 | Pending |
-| PITCH-03 | Phase 2 | Pending |
-| PITCH-04 | Phase 2 | Pending |
-| PITCH-05 | Phase 2 | Pending |
+| PITCH-01 | Phase 2 | Verified |
+| PITCH-02 | Phase 2 | Verified |
+| PITCH-03 | Phase 2 | Verified |
+| PITCH-04 | Phase 2 | Verified |
+| PITCH-05 | Phase 2 | Verified |
 | GAME-01 | Phase 3 | Pending |
 | GAME-02 | Phase 3 | Pending |
 | GAME-03 | Phase 3 | Pending |
