@@ -30,10 +30,10 @@
 
 - [x] **GAME-01**: User can start 1-minute practice session
 - [x] **GAME-02**: User can start 5-minute practice session
-- [ ] **GAME-03**: Random target notes displayed during session
+- [x] **GAME-03**: Random target notes displayed during session
 - [x] **GAME-04**: Session tracks correct/incorrect note hits
 - [x] **GAME-05**: Session displays elapsed time and remaining time
-- [ ] **GAME-06**: Session ends with score summary (accuracy percentage)
+- [x] **GAME-06**: Session ends with score summary (accuracy percentage)
 
 ### Rhythm Module
 
@@ -97,10 +97,10 @@
 | PITCH-05 | Phase 2 | Pending |
 | GAME-01 | Phase 3 | Complete |
 | GAME-02 | Phase 3 | Complete |
-| GAME-03 | Phase 3 | Pending |
+| GAME-03 | Phase 3 | Complete |
 | GAME-04 | Phase 3 | Complete |
 | GAME-05 | Phase 3 | Complete |
-| GAME-06 | Phase 3 | Pending |
+| GAME-06 | Phase 3 | Complete |
 | RHYTHM-01 | Phase 4 | Pending |
 | RHYTHM-02 | Phase 4 | Pending |
 | RHYTHM-03 | Phase 4 | Pending |
