@@ -11,7 +11,7 @@ const PIANO_MIN_FREQ = 27;
 const PIANO_MAX_FREQ = 4200;
 
 // Minimum clarity to return a result
-const MIN_CLARITY_FLOOR = 0.85;
+const MIN_CLARITY_FLOOR = 0.7;
 
 export interface DetectorResult {
   frequency: number;

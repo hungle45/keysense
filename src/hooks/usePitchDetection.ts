@@ -94,10 +94,14 @@ export function usePitchDetection(
       return;
     }
 
-    detectorRef.current = createPitchDetector(2048);
+    // Use 4096 samples for better low-frequency resolution
+    // At 48kHz: ~85ms window, enough for 2+ cycles of A0 (27.5Hz, period=36ms)
+    const fftSize = 4096;
+    
+    detectorRef.current = createPitchDetector(fftSize);
 
     const analyser = audioContext.createAnalyser();
-    analyser.fftSize = 2048;
+    analyser.fftSize = fftSize;
     analyser.smoothingTimeConstant = 0.8;
     analyserRef.current = analyser;
 
