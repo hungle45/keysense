@@ -1,14 +1,17 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useState } from 'react';
 import { useGameSession } from '@/hooks/useGameSession';
+import { useHitDetection } from '@/hooks/useHitDetection';
 import { SessionConfig } from '@/components/game/SessionConfig';
 import { CountdownSplash } from '@/components/game/CountdownSplash';
 import { GrandStaff } from '@/components/game/GrandStaff';
 import { ScrollingNote } from '@/components/game/ScrollingNote';
+import { ResultsModal } from '@/components/game/ResultsModal';
 import { SCROLL_SPEEDS } from '@/types/game';
 import type { PitchResult } from '@/types/pitch';
 
 interface GameScreenProps {
   pitch: PitchResult | null;
+  onBackToMenu?: () => void;
 }
 
 // Format milliseconds as mm:ss
@@ -19,8 +22,9 @@ function formatTime(ms: number): string {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
-export function GameScreen({ pitch }: GameScreenProps) {
+export function GameScreen({ pitch, onBackToMenu }: GameScreenProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(800);
   const {
     state,
     remainingMs,
@@ -28,11 +32,35 @@ export function GameScreen({ pitch }: GameScreenProps) {
     configure,
     startGame,
     spawnNote,
+    recordHit,
     recordMiss,
     reset,
   } = useGameSession();
   
-  const containerWidth = containerRef.current?.offsetWidth ?? 800;
+  // Track container width for scroll calculations
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    const observer = new ResizeObserver(entries => {
+      const entry = entries[0];
+      if (entry) {
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+    
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+  
+  // Hit detection integration
+  useHitDetection({
+    pitch,
+    activeNotes: state.activeNotes,
+    scrollSpeed: state.config.scrollSpeed,
+    containerWidth,
+    isRunning: state.status === 'running',
+    onHit: recordHit,
+  });
   
   // Spawn notes at regular intervals based on scroll speed
   useEffect(() => {
@@ -57,12 +85,6 @@ export function GameScreen({ pitch }: GameScreenProps) {
     return () => clearInterval(interval);
   }, [state.status, state.config.scrollSpeed, containerWidth, spawnNote, state.activeNotes.length]);
   
-  // Handle note reaching timing line (for hit detection)
-  const handleNoteAtTimingLine = useCallback((_noteId: string) => {
-    // This is called when note reaches timing line
-    // Hit detection happens in Plan 03
-  }, []);
-  
   // Handle note scrolling past (mark as missed)
   const handleNoteMissed = useCallback((noteId: string) => {
     recordMiss(noteId);
@@ -86,23 +108,18 @@ export function GameScreen({ pitch }: GameScreenProps) {
   }
   
   if (state.status === 'complete') {
-    // Results shown - detailed implementation in Plan 03
     return (
-      <div className="flex items-center justify-center p-4">
-        <div className="text-center space-y-4">
-          <h2 className="text-3xl font-bold">Session Complete!</h2>
-          <div className="text-6xl font-bold text-primary">{accuracy}%</div>
-          <p className="text-muted-foreground">
-            {state.hits} hits / {state.misses} misses
-          </p>
-          <button
-            className="px-6 py-3 bg-primary text-primary-foreground rounded-lg min-h-[44px]"
-            onClick={reset}
-          >
-            Play Again
-          </button>
-        </div>
-      </div>
+      <ResultsModal
+        hits={state.hits}
+        misses={state.misses}
+        accuracy={accuracy}
+        noteHistory={state.noteHistory}
+        onPlayAgain={reset}
+        onBackToMenu={() => {
+          reset();
+          onBackToMenu?.();
+        }}
+      />
     );
   }
   
@@ -128,7 +145,6 @@ export function GameScreen({ pitch }: GameScreenProps) {
               note={note}
               scrollSpeed={state.config.scrollSpeed}
               containerWidth={containerWidth}
-              onReachTimingLine={() => handleNoteAtTimingLine(note.id)}
               onScrollPast={() => handleNoteMissed(note.id)}
             />
           ))}

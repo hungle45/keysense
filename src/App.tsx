@@ -65,6 +65,7 @@ function App() {
             isReady={isReady}
             noiseFloor={calibration.noiseFloor}
             noiseFloorRMS={calibration.noiseFloorRMS}
+            onBackToMenu={() => setCurrentScreen('home')}
           />
         )}
       </main>
@@ -187,16 +188,17 @@ interface GameScreenWrapperProps {
   isReady: boolean;
   noiseFloor: number | null;
   noiseFloorRMS: number | null;
+  onBackToMenu: () => void;
 }
 
-function GameScreenWrapper({ audioContext, stream, isReady, noiseFloor, noiseFloorRMS }: GameScreenWrapperProps) {
+function GameScreenWrapper({ audioContext, stream, isReady, noiseFloor, noiseFloorRMS, onBackToMenu }: GameScreenWrapperProps) {
   const { pitch } = usePitchDetection(
     isReady && audioContext ? audioContext : null,
     isReady && stream ? stream : null,
     { noiseFloor, noiseFloorRMS }
   );
 
-  return <GameScreen pitch={pitch} />;
+  return <GameScreen pitch={pitch} onBackToMenu={onBackToMenu} />;
 }
 
 export default App;
