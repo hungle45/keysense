@@ -19,12 +19,17 @@ const GATE_CLOSE_MULTIPLIER = 1.1;  // noiseFloor * 1.1 to close gate
 // Very conservative - will gate most silence
 const DEFAULT_NOISE_FLOOR_RMS = 0.001;
 
-// Consecutive frame consistency: note must be detected N times in a row
-// before updating the UI. Prevents single-frame ghost notes.
-const CONSECUTIVE_FRAMES_REQUIRED = 2;
+// TIME-BASED HOLD: Note must be consistent for this duration before display
+// More reliable than frame count (independent of frame rate)
+// Research suggests 80-130ms is optimal - using 100ms as sweet spot
+const CONSISTENCY_HOLD_TIME_MS = 100;
 
-// Silence frame threshold: how many silent frames before clearing display
-const SILENCE_FRAMES_TO_CLEAR = 5;
+// Silence timeout: how long to wait before clearing display after silence
+// Allows natural piano note decay
+const SILENCE_TIMEOUT_MS = 150;
+
+// C5 frequency threshold for adaptive clarity
+const C5_FREQUENCY = 523.25;
 
 // ============================================================================
 // TYPES
@@ -45,8 +50,9 @@ export interface RMSDebugInfo {
 
 interface ConsistencyState {
   note: string | null;            // Note being tracked (e.g., "C4")
-  count: number;                  // Consecutive frames with this note
+  startTime: number;              // When this note started being detected (ms)
   lastPitch: PitchResult | null;  // Most recent pitch data for this note
+  confirmed: boolean;             // Has this note been confirmed (displayed)?
 }
 
 // ============================================================================
@@ -75,15 +81,16 @@ export function usePitchDetection(
   // Hysteresis gate state
   const gateOpenRef = useRef<boolean>(false);
   
-  // Consecutive frame consistency tracking
+  // Time-based consistency tracking
   const consistencyRef = useRef<ConsistencyState>({
     note: null,
-    count: 0,
+    startTime: 0,
     lastPitch: null,
+    confirmed: false,
   });
   
-  // Silence tracking for clearing display
-  const silentFrameCountRef = useRef<number>(0);
+  // Silence tracking for clearing display (time-based)
+  const silenceStartRef = useRef<number | null>(null);
 
   const detect = useCallback(() => {
     if (!analyserRef.current || !detectorRef.current || !audioContext || !stream) {
@@ -93,6 +100,7 @@ export function usePitchDetection(
     const analyser = analyserRef.current;
     const detector = detectorRef.current;
     const sampleRate = audioContext.sampleRate;
+    const now = performance.now();
 
     // Get time-domain data for RMS calculation
     const dataArray = new Float32Array(analyser.fftSize);
@@ -118,7 +126,7 @@ export function usePitchDetection(
     }
     // Otherwise: gate stays in current state (hysteresis zone)
     
-    // Update RMS debug info for visual feedback (throttle updates)
+    // Update RMS debug info for visual feedback
     setRmsDebug({
       currentRMS,
       openThreshold,
@@ -128,28 +136,44 @@ export function usePitchDetection(
     
     if (!gateOpenRef.current) {
       // Gate is closed - DON'T run pitch detector at all
-      silentFrameCountRef.current++;
       
-      if (silentFrameCountRef.current >= SILENCE_FRAMES_TO_CLEAR) {
+      // Start silence timer if not already started
+      if (silenceStartRef.current === null) {
+        silenceStartRef.current = now;
+      }
+      
+      // Check if silence timeout has elapsed
+      const silenceDuration = now - silenceStartRef.current;
+      if (silenceDuration >= SILENCE_TIMEOUT_MS) {
         // Sustained silence - clear display and reset consistency
-        consistencyRef.current = { note: null, count: 0, lastPitch: null };
+        consistencyRef.current = { note: null, startTime: 0, lastPitch: null, confirmed: false };
         setPitch(null);
       }
-      // If not enough silent frames yet, keep displaying current note (natural decay)
+      // If not enough silence time yet, keep displaying current note (natural decay)
       
       animationFrameRef.current = requestAnimationFrame(detect);
       return;
     }
 
-    // Gate is open - reset silence counter and run pitch detector
-    silentFrameCountRef.current = 0;
+    // Gate is open - reset silence timer and run pitch detector
+    silenceStartRef.current = null;
     
     const result = detector.findPitch(dataArray, sampleRate);
 
     if (result) {
       const { frequency, clarity } = result;
       
-      // Detector already filters for clarity > 0.9 and piano frequency range
+      // ADAPTIVE CLARITY: Lower threshold for high notes (above C5)
+      // High notes have more complex harmonics that reduce clarity
+      const minClarity = frequency > C5_FREQUENCY ? 0.85 : 0.9;
+      
+      if (clarity < minClarity) {
+        // Clarity too low even with adaptive threshold - treat as no detection
+        consistencyRef.current = { note: null, startTime: 0, lastPitch: null, confirmed: false };
+        animationFrameRef.current = requestAnimationFrame(detect);
+        return;
+      }
+      
       const noteResult = frequencyToNote(frequency);
       const cents = calculateCents(frequency, noteResult.frequency);
       const noteKey = `${noteResult.note}${noteResult.octave}`;
@@ -162,31 +186,34 @@ export function usePitchDetection(
         clarity,
       };
 
-      // CONSECUTIVE FRAME CONSISTENCY CHECK
+      // TIME-BASED CONSISTENCY CHECK
       if (consistencyRef.current.note === noteKey) {
-        // Same note as before - increment count
-        consistencyRef.current.count++;
+        // Same note as before - update pitch data
         consistencyRef.current.lastPitch = newPitch;
+        
+        // Check if hold time has elapsed
+        const heldDuration = now - consistencyRef.current.startTime;
+        if (heldDuration >= CONSISTENCY_HOLD_TIME_MS || consistencyRef.current.confirmed) {
+          // Note has been consistent long enough, OR already confirmed - update display
+          consistencyRef.current.confirmed = true;
+          setPitch(newPitch);
+        }
+        // If not enough time yet, keep previous display
       } else {
-        // Different note - reset tracking
+        // Different note - reset tracking with new note
         consistencyRef.current = {
           note: noteKey,
-          count: 1,
+          startTime: now,
           lastPitch: newPitch,
+          confirmed: false,
         };
       }
-
-      // Only update UI if note has been consistent for required frames
-      if (consistencyRef.current.count >= CONSECUTIVE_FRAMES_REQUIRED) {
-        setPitch(consistencyRef.current.lastPitch);
-      }
-      // If not enough consecutive frames yet, keep previous display
       
     } else {
-      // Detector returned null (low clarity or out of frequency range)
-      // Reset consistency - can't build on unclear detections
-      consistencyRef.current = { note: null, count: 0, lastPitch: null };
-      // Don't clear display immediately - let silence threshold handle it
+      // Detector returned null (out of frequency range)
+      // Reset consistency - can't build on out-of-range detections
+      consistencyRef.current = { note: null, startTime: 0, lastPitch: null, confirmed: false };
+      // Don't clear display immediately - let silence timeout handle it
     }
 
     animationFrameRef.current = requestAnimationFrame(detect);
@@ -223,8 +250,8 @@ export function usePitchDetection(
       }
       detectorRef.current = null;
       // Reset all tracking state
-      consistencyRef.current = { note: null, count: 0, lastPitch: null };
-      silentFrameCountRef.current = 0;
+      consistencyRef.current = { note: null, startTime: 0, lastPitch: null, confirmed: false };
+      silenceStartRef.current = null;
     };
   }, [audioContext, stream, detect]);
 
