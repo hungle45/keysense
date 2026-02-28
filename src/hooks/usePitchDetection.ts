@@ -5,6 +5,10 @@ import { calculateCents } from '@/lib/pitch/cents';
 import { calculateRMS, rmsToDecibels } from '@/lib/audio/analyser';
 import type { PitchResult } from '@/types/pitch';
 
+// Configuration for pitch detection stability
+const NOTE_HOLD_TIME_MS = 150; // How long to hold a note after detection drops
+const CONSECUTIVE_NULL_THRESHOLD = 3; // Number of consecutive null readings before clearing
+
 export interface UsePitchDetectionOptions {
   noiseFloor: number | null;
 }
@@ -21,6 +25,11 @@ export function usePitchDetection(
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  
+  // State for note hold/debounce logic
+  const lastValidPitchRef = useRef<PitchResult | null>(null);
+  const lastValidTimeRef = useRef<number>(0);
+  const consecutiveNullCountRef = useRef<number>(0);
 
   const detect = useCallback(() => {
     if (!analyserRef.current || !detectorRef.current || !audioContext || !stream) {
@@ -38,6 +47,7 @@ export function usePitchDetection(
     const db = rmsToDecibels(rms);
 
     const effectiveNoiseFloor = options.noiseFloor !== null ? options.noiseFloor : -60;
+    const now = performance.now();
 
     if (db > effectiveNoiseFloor + 10) {
       const result = detector.findPitch(dataArray, sampleRate);
@@ -47,18 +57,48 @@ export function usePitchDetection(
         const noteResult = frequencyToNote(frequency);
         const cents = calculateCents(frequency, noteResult.frequency);
 
-        setPitch({
+        const newPitch: PitchResult = {
           frequency,
           note: noteResult.note,
           octave: noteResult.octave,
           cents,
           clarity,
-        });
+        };
+
+        // Valid detection - reset null counter and update state
+        consecutiveNullCountRef.current = 0;
+        lastValidPitchRef.current = newPitch;
+        lastValidTimeRef.current = now;
+        setPitch(newPitch);
       } else {
-        setPitch(null);
+        // Detector returned null (low clarity) - apply hold logic
+        consecutiveNullCountRef.current++;
+        
+        const timeSinceLastValid = now - lastValidTimeRef.current;
+        const shouldHold = 
+          lastValidPitchRef.current !== null &&
+          timeSinceLastValid < NOTE_HOLD_TIME_MS &&
+          consecutiveNullCountRef.current < CONSECUTIVE_NULL_THRESHOLD;
+        
+        if (!shouldHold) {
+          setPitch(null);
+        }
+        // If shouldHold is true, we keep the current pitch state unchanged
       }
     } else {
-      setPitch(null);
+      // Below noise floor - apply hold logic
+      consecutiveNullCountRef.current++;
+      
+      const timeSinceLastValid = now - lastValidTimeRef.current;
+      const shouldHold = 
+        lastValidPitchRef.current !== null &&
+        timeSinceLastValid < NOTE_HOLD_TIME_MS &&
+        consecutiveNullCountRef.current < CONSECUTIVE_NULL_THRESHOLD;
+      
+      if (!shouldHold) {
+        setPitch(null);
+        lastValidPitchRef.current = null;
+      }
     }
 
     animationFrameRef.current = requestAnimationFrame(detect);
@@ -94,6 +134,10 @@ export function usePitchDetection(
         sourceRef.current = null;
       }
       detectorRef.current = null;
+      // Reset hold state
+      lastValidPitchRef.current = null;
+      lastValidTimeRef.current = 0;
+      consecutiveNullCountRef.current = 0;
     };
   }, [audioContext, stream, detect]);
 
