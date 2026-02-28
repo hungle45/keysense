@@ -62,7 +62,6 @@ Recent decisions affecting current work:
 ### Pending Todos
 
 - commit gitgnore files (tooling)
-- add github workflow to auto deploy this project using github pages (tooling)
 
 ### Blockers/Concerns
 
