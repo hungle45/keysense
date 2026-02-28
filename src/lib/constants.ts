@@ -1,0 +1,7 @@
+export const PIANO_MIN_FREQ = 27.5;
+export const PIANO_MAX_FREQ = 4186;
+
+export const CALIBRATION_DURATION_MS = 3000;
+export const CALIBRATION_SAMPLE_INTERVAL_MS = 50;
+
+export const DEFAULT_NOISE_FLOOR_OFFSET_DB = 10;
