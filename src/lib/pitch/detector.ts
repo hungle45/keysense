@@ -4,7 +4,8 @@ import { PitchDetector } from 'pitchy';
 // Lower values = more sensitive but potentially more noise
 // Higher values = more stable but may miss some notes
 // Piano notes typically have clarity 0.7-0.95 depending on harmonics and decay
-const MIN_CLARITY_THRESHOLD = 0.8;
+// Using 0.85 for better stability - ignores uncertain detections
+const MIN_CLARITY_THRESHOLD = 0.85;
 
 export interface DetectorResult {
   frequency: number;

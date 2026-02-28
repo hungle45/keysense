@@ -5,9 +5,60 @@ import { calculateCents } from '@/lib/pitch/cents';
 import { calculateRMS, rmsToDecibels } from '@/lib/audio/analyser';
 import type { PitchResult } from '@/types/pitch';
 
-// Configuration for pitch detection stability
-const NOTE_HOLD_TIME_MS = 150; // How long to hold a note after detection drops
-const CONSECUTIVE_NULL_THRESHOLD = 3; // Number of consecutive null readings before clearing
+// ============================================================================
+// PITCH STABILIZATION CONFIGURATION
+// ============================================================================
+
+// Voting system: Buffer of recent notes to find most frequent
+const VOTE_BUFFER_SIZE = 10;
+
+// Temporal debouncing: Lock note display to prevent rapid changes
+const NOTE_LOCK_TIME_MS = 150;
+
+// Volume gate: Number of consecutive silent frames before clearing buffer
+const SILENCE_FRAMES_TO_CLEAR = 5;
+
+// ============================================================================
+// HELPER: Note key for voting (combines note name + octave)
+// ============================================================================
+function getNoteKey(pitch: PitchResult): string {
+  return `${pitch.note}${pitch.octave}`;
+}
+
+// ============================================================================
+// HELPER: Find most frequent note in buffer (voting system)
+// ============================================================================
+function getMostFrequentNote(buffer: PitchResult[]): PitchResult | null {
+  if (buffer.length === 0) return null;
+  
+  // Count occurrences of each note
+  const counts = new Map<string, { count: number; pitch: PitchResult }>();
+  
+  for (const pitch of buffer) {
+    const key = getNoteKey(pitch);
+    const existing = counts.get(key);
+    if (existing) {
+      existing.count++;
+      // Keep the most recent pitch data for this note (better cents accuracy)
+      existing.pitch = pitch;
+    } else {
+      counts.set(key, { count: 1, pitch });
+    }
+  }
+  
+  // Find the most frequent note
+  let maxCount = 0;
+  let winner: PitchResult | null = null;
+  
+  for (const { count, pitch } of counts.values()) {
+    if (count > maxCount) {
+      maxCount = count;
+      winner = pitch;
+    }
+  }
+  
+  return winner;
+}
 
 export interface UsePitchDetectionOptions {
   noiseFloor: number | null;
@@ -26,10 +77,15 @@ export function usePitchDetection(
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   
-  // State for note hold/debounce logic
-  const lastValidPitchRef = useRef<PitchResult | null>(null);
-  const lastValidTimeRef = useRef<number>(0);
-  const consecutiveNullCountRef = useRef<number>(0);
+  // Voting system: sliding window buffer of recent detections
+  const voteBufferRef = useRef<PitchResult[]>([]);
+  
+  // Temporal debouncing: track when note was last changed
+  const lastNoteChangeTimeRef = useRef<number>(0);
+  const currentDisplayedNoteRef = useRef<string | null>(null);
+  
+  // Volume gate: track consecutive silent frames
+  const silentFrameCountRef = useRef<number>(0);
 
   const detect = useCallback(() => {
     if (!analyserRef.current || !detectorRef.current || !audioContext || !stream) {
@@ -49,7 +105,11 @@ export function usePitchDetection(
     const effectiveNoiseFloor = options.noiseFloor !== null ? options.noiseFloor : -60;
     const now = performance.now();
 
+    // Check if we're above the noise floor (sound detected)
     if (db > effectiveNoiseFloor + 10) {
+      // Reset silence counter - we have sound
+      silentFrameCountRef.current = 0;
+      
       const result = detector.findPitch(dataArray, sampleRate);
 
       if (result) {
@@ -65,40 +125,50 @@ export function usePitchDetection(
           clarity,
         };
 
-        // Valid detection - reset null counter and update state
-        consecutiveNullCountRef.current = 0;
-        lastValidPitchRef.current = newPitch;
-        lastValidTimeRef.current = now;
-        setPitch(newPitch);
-      } else {
-        // Detector returned null (low clarity) - apply hold logic
-        consecutiveNullCountRef.current++;
-        
-        const timeSinceLastValid = now - lastValidTimeRef.current;
-        const shouldHold = 
-          lastValidPitchRef.current !== null &&
-          timeSinceLastValid < NOTE_HOLD_TIME_MS &&
-          consecutiveNullCountRef.current < CONSECUTIVE_NULL_THRESHOLD;
-        
-        if (!shouldHold) {
-          setPitch(null);
+        // Add to vote buffer (sliding window)
+        voteBufferRef.current.push(newPitch);
+        if (voteBufferRef.current.length > VOTE_BUFFER_SIZE) {
+          voteBufferRef.current.shift();
         }
-        // If shouldHold is true, we keep the current pitch state unchanged
+
+        // Get the winning note from voting
+        const winningPitch = getMostFrequentNote(voteBufferRef.current);
+        
+        if (winningPitch) {
+          const winningNoteKey = getNoteKey(winningPitch);
+          const timeSinceLastChange = now - lastNoteChangeTimeRef.current;
+          
+          // Temporal debouncing: only change displayed note if lock time has passed
+          // OR if this is the first note being displayed
+          if (
+            currentDisplayedNoteRef.current === null ||
+            currentDisplayedNoteRef.current === winningNoteKey ||
+            timeSinceLastChange >= NOTE_LOCK_TIME_MS
+          ) {
+            // Update displayed note
+            if (currentDisplayedNoteRef.current !== winningNoteKey) {
+              currentDisplayedNoteRef.current = winningNoteKey;
+              lastNoteChangeTimeRef.current = now;
+            }
+            setPitch(winningPitch);
+          }
+          // If locked and different note, keep displaying current note (no setPitch call)
+        }
       }
+      // If detector returned null (low clarity), we just don't add to buffer
+      // The voting system will naturally smooth over occasional misses
+      
     } else {
-      // Below noise floor - apply hold logic
-      consecutiveNullCountRef.current++;
+      // Below noise floor - VOLUME GATE
+      silentFrameCountRef.current++;
       
-      const timeSinceLastValid = now - lastValidTimeRef.current;
-      const shouldHold = 
-        lastValidPitchRef.current !== null &&
-        timeSinceLastValid < NOTE_HOLD_TIME_MS &&
-        consecutiveNullCountRef.current < CONSECUTIVE_NULL_THRESHOLD;
-      
-      if (!shouldHold) {
+      if (silentFrameCountRef.current >= SILENCE_FRAMES_TO_CLEAR) {
+        // Clear the vote buffer on sustained silence
+        voteBufferRef.current = [];
+        currentDisplayedNoteRef.current = null;
         setPitch(null);
-        lastValidPitchRef.current = null;
       }
+      // If not enough silent frames yet, keep displaying current note (natural decay)
     }
 
     animationFrameRef.current = requestAnimationFrame(detect);
@@ -134,10 +204,11 @@ export function usePitchDetection(
         sourceRef.current = null;
       }
       detectorRef.current = null;
-      // Reset hold state
-      lastValidPitchRef.current = null;
-      lastValidTimeRef.current = 0;
-      consecutiveNullCountRef.current = 0;
+      // Reset stabilization state
+      voteBufferRef.current = [];
+      currentDisplayedNoteRef.current = null;
+      lastNoteChangeTimeRef.current = 0;
+      silentFrameCountRef.current = 0;
     };
   }, [audioContext, stream, detect]);
 
