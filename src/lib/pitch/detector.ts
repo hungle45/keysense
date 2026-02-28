@@ -10,8 +10,8 @@ import { PitchDetector } from 'pitchy';
 const PIANO_MIN_FREQ = 27;
 const PIANO_MAX_FREQ = 4200;
 
-// Minimum clarity to even return a result (very low - adaptive check happens in hook)
-const MIN_CLARITY_FLOOR = 0.7;
+// Minimum clarity to return a result
+const MIN_CLARITY_FLOOR = 0.85;
 
 export interface DetectorResult {
   frequency: number;
@@ -28,8 +28,7 @@ export class PitchDetectorWrapper {
   findPitch(input: Float32Array, sampleRate: number): DetectorResult | null {
     const [frequency, clarity] = this.detector.findPitch(input, sampleRate);
 
-    // Only filter by frequency range and minimum floor clarity
-    // Adaptive clarity threshold (0.85 for high notes, 0.9 for low) is applied in usePitchDetection
+    // Filter by frequency range and minimum clarity threshold
     if (
       clarity > MIN_CLARITY_FLOOR &&
       frequency >= PIANO_MIN_FREQ &&

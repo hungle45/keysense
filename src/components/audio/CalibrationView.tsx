@@ -1,44 +1,43 @@
-import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Settings, Volume2, Music, Play, RotateCcw } from 'lucide-react';
-import { useCalibration } from '@/hooks/useCalibration';
 import { PIANO_MIN_FREQ, PIANO_MAX_FREQ } from '@/lib/constants';
+
+interface CalibrationState {
+  noiseFloor: number | null;
+  noiseFloorRMS: number | null;
+  frequencyRange: { min: number; max: number } | null;
+  isCalibrating: boolean;
+  currentDb: number;
+  hasCalibrated: boolean;
+  startCalibration: (stream: MediaStream, durationMs?: number) => Promise<{ noiseFloor: number; noiseFloorRMS: number; frequencyRange: { min: number; max: number } }>;
+  reset: () => void;
+}
 
 interface CalibrationViewProps {
   stream: MediaStream | null;
+  calibration: CalibrationState;
 }
 
-export function CalibrationView({ stream }: CalibrationViewProps) {
+export function CalibrationView({ stream, calibration }: CalibrationViewProps) {
   const {
     noiseFloor,
     frequencyRange,
     isCalibrating,
     currentDb,
+    hasCalibrated,
     startCalibration,
     reset,
-  } = useCalibration();
-  
-  const [hasCalibrated, setHasCalibrated] = useState(false);
-
-  useEffect(() => {
-    return () => {
-      reset();
-    };
-  }, [reset]);
+  } = calibration;
 
   const handleStartCalibration = async () => {
     if (!stream) return;
-    
-    setHasCalibrated(false);
     await startCalibration(stream);
-    setHasCalibrated(true);
   };
 
   const handleReset = () => {
     reset();
-    setHasCalibrated(false);
   };
 
   const formatFrequency = (freq: number): string => {

@@ -4,12 +4,54 @@ import { createAnalyser, getTimeDomainData, calculateRMS, rmsToDecibels } from '
 import { PIANO_MIN_FREQ, PIANO_MAX_FREQ, CALIBRATION_DURATION_MS, CALIBRATION_SAMPLE_INTERVAL_MS } from '@/lib/constants';
 import type { CalibrationResult } from '@/types/audio';
 
+// LocalStorage key for persisting calibration
+const CALIBRATION_STORAGE_KEY = 'keysense_calibration';
+
+interface StoredCalibration {
+  noiseFloor: number;
+  noiseFloorRMS: number;
+  frequencyRange: { min: number; max: number };
+  timestamp: number;
+}
+
+function loadStoredCalibration(): StoredCalibration | null {
+  try {
+    const stored = localStorage.getItem(CALIBRATION_STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return null;
+}
+
+function saveCalibration(data: StoredCalibration): void {
+  try {
+    localStorage.setItem(CALIBRATION_STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function clearStoredCalibration(): void {
+  try {
+    localStorage.removeItem(CALIBRATION_STORAGE_KEY);
+  } catch {
+    // Ignore errors
+  }
+}
+
 export function useCalibration() {
-  const [noiseFloor, setNoiseFloor] = useState<number | null>(null);
-  const [noiseFloorRMS, setNoiseFloorRMS] = useState<number | null>(null);
-  const [frequencyRange, setFrequencyRange] = useState<{ min: number; max: number } | null>(null);
+  // Initialize state from localStorage
+  const stored = loadStoredCalibration();
+  
+  const [noiseFloor, setNoiseFloor] = useState<number | null>(stored?.noiseFloor ?? null);
+  const [noiseFloorRMS, setNoiseFloorRMS] = useState<number | null>(stored?.noiseFloorRMS ?? null);
+  const [frequencyRange, setFrequencyRange] = useState<{ min: number; max: number } | null>(stored?.frequencyRange ?? null);
   const [isCalibrating, setIsCalibrating] = useState(false);
   const [currentDb, setCurrentDb] = useState<number>(-100);
+  const [hasCalibrated, setHasCalibrated] = useState(stored !== null);
   
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -92,6 +134,15 @@ export function useCalibration() {
           const freqRange = detectFrequencyRange(analyser);
           setFrequencyRange(freqRange);
           
+          // Persist to localStorage
+          saveCalibration({
+            noiseFloor: noiseFloorValue,
+            noiseFloorRMS: noiseFloorRMSValue,
+            frequencyRange: freqRange,
+            timestamp: Date.now(),
+          });
+          setHasCalibrated(true);
+          
           setIsCalibrating(false);
           
           resolve({
@@ -117,6 +168,8 @@ export function useCalibration() {
     setFrequencyRange(null);
     setIsCalibrating(false);
     setCurrentDb(-100);
+    setHasCalibrated(false);
+    clearStoredCalibration();
     
     if (sourceRef.current) {
       sourceRef.current.disconnect();
@@ -136,6 +189,7 @@ export function useCalibration() {
     frequencyRange,
     isCalibrating,
     currentDb,
+    hasCalibrated,
     startCalibration,
     reset,
   };

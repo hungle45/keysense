@@ -16,6 +16,9 @@ function App() {
   
   // Lift useAudioEngine to App level so all children share the same instance
   const { audioContext, stream, isReady, requestMicrophone, permissionState } = useAudioEngine();
+  
+  // Lift useCalibration to App level so calibration persists across screens
+  const calibration = useCalibration();
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -44,9 +47,14 @@ function App() {
             isReady={isReady}
             requestMicrophone={requestMicrophone}
             permissionState={permissionState}
+            noiseFloor={calibration.noiseFloor}
+            noiseFloorRMS={calibration.noiseFloorRMS}
           />
         ) : (
-          <SettingsScreen stream={stream} />
+          <SettingsScreen 
+            stream={stream}
+            calibration={calibration}
+          />
         )}
       </main>
 
@@ -78,12 +86,12 @@ interface HomeScreenProps {
   isReady: boolean;
   requestMicrophone: () => Promise<{ audioContext: AudioContext | null; stream: MediaStream | null; error: unknown }>;
   permissionState: string;
+  noiseFloor: number | null;
+  noiseFloorRMS: number | null;
 }
 
-function HomeScreen({ audioContext, stream, isReady, requestMicrophone, permissionState }: HomeScreenProps) {
-  const { noiseFloor, noiseFloorRMS } = useCalibration();
-
-  const { pitch, rmsDebug } = usePitchDetection(
+function HomeScreen({ audioContext, stream, isReady, requestMicrophone, permissionState, noiseFloor, noiseFloorRMS }: HomeScreenProps) {
+  const { pitch } = usePitchDetection(
     isReady && audioContext ? audioContext : null,
     isReady && stream ? stream : null,
     { noiseFloor, noiseFloorRMS }
@@ -115,7 +123,7 @@ function HomeScreen({ audioContext, stream, isReady, requestMicrophone, permissi
           </CardHeader>
           <CardContent>
             <div className="flex justify-center py-4">
-              <TunerDisplay pitch={pitch} rmsDebug={rmsDebug} />
+              <TunerDisplay pitch={pitch} />
             </div>
           </CardContent>
         </Card>
@@ -130,14 +138,26 @@ function HomeScreen({ audioContext, stream, isReady, requestMicrophone, permissi
   );
 }
 
-interface SettingsScreenProps {
-  stream: MediaStream | null;
+interface CalibrationState {
+  noiseFloor: number | null;
+  noiseFloorRMS: number | null;
+  frequencyRange: { min: number; max: number } | null;
+  isCalibrating: boolean;
+  currentDb: number;
+  hasCalibrated: boolean;
+  startCalibration: (stream: MediaStream, durationMs?: number) => Promise<{ noiseFloor: number; noiseFloorRMS: number; frequencyRange: { min: number; max: number } }>;
+  reset: () => void;
 }
 
-function SettingsScreen({ stream }: SettingsScreenProps) {
+interface SettingsScreenProps {
+  stream: MediaStream | null;
+  calibration: CalibrationState;
+}
+
+function SettingsScreen({ stream, calibration }: SettingsScreenProps) {
   return (
     <div className="w-full max-w-md space-y-4">
-      <CalibrationView stream={stream} />
+      <CalibrationView stream={stream} calibration={calibration} />
     </div>
   );
 }
