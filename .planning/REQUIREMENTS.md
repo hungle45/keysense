@@ -28,11 +28,11 @@
 
 ### Game Loop
 
-- [ ] **GAME-01**: User can start 1-minute practice session
-- [ ] **GAME-02**: User can start 5-minute practice session
+- [x] **GAME-01**: User can start 1-minute practice session
+- [x] **GAME-02**: User can start 5-minute practice session
 - [ ] **GAME-03**: Random target notes displayed during session
-- [ ] **GAME-04**: Session tracks correct/incorrect note hits
-- [ ] **GAME-05**: Session displays elapsed time and remaining time
+- [x] **GAME-04**: Session tracks correct/incorrect note hits
+- [x] **GAME-05**: Session displays elapsed time and remaining time
 - [ ] **GAME-06**: Session ends with score summary (accuracy percentage)
 
 ### Rhythm Module
@@ -95,11 +95,11 @@
 | PITCH-03 | Phase 2 | Pending |
 | PITCH-04 | Phase 2 | Pending |
 | PITCH-05 | Phase 2 | Pending |
-| GAME-01 | Phase 3 | Pending |
-| GAME-02 | Phase 3 | Pending |
+| GAME-01 | Phase 3 | Complete |
+| GAME-02 | Phase 3 | Complete |
 | GAME-03 | Phase 3 | Pending |
-| GAME-04 | Phase 3 | Pending |
-| GAME-05 | Phase 3 | Pending |
+| GAME-04 | Phase 3 | Complete |
+| GAME-05 | Phase 3 | Complete |
 | GAME-06 | Phase 3 | Pending |
 | RHYTHM-01 | Phase 4 | Pending |
 | RHYTHM-02 | Phase 4 | Pending |
