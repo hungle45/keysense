@@ -1,11 +1,18 @@
 import { PitchDetector } from 'pitchy';
 
+// ============================================================================
+// PITCH DETECTION CONFIGURATION
+// ============================================================================
+
 // Clarity threshold for accepting a pitch detection
-// Lower values = more sensitive but potentially more noise
-// Higher values = more stable but may miss some notes
-// Piano notes typically have clarity 0.7-0.95 depending on harmonics and decay
-// Using 0.9 for strict noise rejection - only accept high-confidence detections
+// Must be > 0.9 per user requirements for strict noise rejection
 const MIN_CLARITY_THRESHOLD = 0.9;
+
+// Piano frequency bounds (A0 = 27.5Hz to C8 = 4186Hz)
+// Reject any detected pitch outside this range to avoid ghost notes from
+// infrasound (HVAC rumble) or ultrasound artifacts
+const PIANO_MIN_FREQ = 27;
+const PIANO_MAX_FREQ = 4200;
 
 export interface DetectorResult {
   frequency: number;
@@ -22,7 +29,12 @@ export class PitchDetectorWrapper {
   findPitch(input: Float32Array, sampleRate: number): DetectorResult | null {
     const [frequency, clarity] = this.detector.findPitch(input, sampleRate);
 
-    if (clarity > MIN_CLARITY_THRESHOLD && frequency > 20 && frequency < 5000) {
+    // Strict filtering: clarity > 0.9 AND within piano frequency range
+    if (
+      clarity > MIN_CLARITY_THRESHOLD &&
+      frequency >= PIANO_MIN_FREQ &&
+      frequency <= PIANO_MAX_FREQ
+    ) {
       return { frequency, clarity };
     }
 

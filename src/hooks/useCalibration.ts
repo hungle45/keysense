@@ -77,13 +77,14 @@ export function useCalibration() {
         }
         
         if (dbReadings.length > 0) {
-          // Sort and get 90th percentile for both dB and RMS
-          dbReadings.sort((a, b) => a - b);
-          rmsReadings.sort((a, b) => a - b);
+          // Calculate AVERAGE linear RMS (not percentile) for noise floor
+          // This gives a stable baseline for the noise gate
+          const avgRMS = rmsReadings.reduce((sum, val) => sum + val, 0) / rmsReadings.length;
+          const noiseFloorRMSValue = avgRMS;
           
-          const percentileIndex = Math.floor(dbReadings.length * 0.9);
-          const noiseFloorValue = dbReadings[percentileIndex] || dbReadings[dbReadings.length - 1];
-          const noiseFloorRMSValue = rmsReadings[percentileIndex] || rmsReadings[rmsReadings.length - 1];
+          // Keep dB value for display purposes only (average dB)
+          const avgDb = dbReadings.reduce((sum, val) => sum + val, 0) / dbReadings.length;
+          const noiseFloorValue = avgDb;
           
           setNoiseFloor(noiseFloorValue);
           setNoiseFloorRMS(noiseFloorRMSValue);

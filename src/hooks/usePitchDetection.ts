@@ -6,64 +6,42 @@ import { calculateRMS } from '@/lib/audio/analyser';
 import type { PitchResult } from '@/types/pitch';
 
 // ============================================================================
-// PITCH STABILIZATION CONFIGURATION
+// NOISE GATE & STABILIZATION CONFIGURATION
 // ============================================================================
 
-// Voting system: Buffer of recent notes to find most frequent
-const VOTE_BUFFER_SIZE = 10;
+// Noise gate multiplier: currentRMS must be > noiseFloor * this value
+// 2.5x provides good margin above ambient noise without missing soft notes
+const NOISE_GATE_MULTIPLIER = 2.5;
 
-// Temporal debouncing: Lock note display to prevent rapid changes
-const NOTE_LOCK_TIME_MS = 150;
+// Default noise floor RMS if calibration hasn't run
+// Very conservative - will gate most silence
+const DEFAULT_NOISE_FLOOR_RMS = 0.001;
 
-// Volume gate: Number of consecutive silent frames before clearing buffer
+// Consecutive frame consistency: note must be detected N times in a row
+// before updating the UI. Prevents single-frame ghost notes.
+const CONSECUTIVE_FRAMES_REQUIRED = 3;
+
+// Silence frame threshold: how many silent frames before clearing display
 const SILENCE_FRAMES_TO_CLEAR = 5;
 
 // ============================================================================
-// HELPER: Note key for voting (combines note name + octave)
+// TYPES
 // ============================================================================
-function getNoteKey(pitch: PitchResult): string {
-  return `${pitch.note}${pitch.octave}`;
-}
-
-// ============================================================================
-// HELPER: Find most frequent note in buffer (voting system)
-// ============================================================================
-function getMostFrequentNote(buffer: PitchResult[]): PitchResult | null {
-  if (buffer.length === 0) return null;
-  
-  // Count occurrences of each note
-  const counts = new Map<string, { count: number; pitch: PitchResult }>();
-  
-  for (const pitch of buffer) {
-    const key = getNoteKey(pitch);
-    const existing = counts.get(key);
-    if (existing) {
-      existing.count++;
-      // Keep the most recent pitch data for this note (better cents accuracy)
-      existing.pitch = pitch;
-    } else {
-      counts.set(key, { count: 1, pitch });
-    }
-  }
-  
-  // Find the most frequent note
-  let maxCount = 0;
-  let winner: PitchResult | null = null;
-  
-  for (const { count, pitch } of counts.values()) {
-    if (count > maxCount) {
-      maxCount = count;
-      winner = pitch;
-    }
-  }
-  
-  return winner;
-}
 
 export interface UsePitchDetectionOptions {
-  noiseFloor: number | null;
-  noiseFloorRMS: number | null;
+  noiseFloor: number | null;      // dB value (for display only, not used in gate)
+  noiseFloorRMS: number | null;   // Linear RMS value (used for noise gate)
 }
+
+interface ConsistencyState {
+  note: string | null;            // Note being tracked (e.g., "C4")
+  count: number;                  // Consecutive frames with this note
+  lastPitch: PitchResult | null;  // Most recent pitch data for this note
+}
+
+// ============================================================================
+// MAIN HOOK
+// ============================================================================
 
 export function usePitchDetection(
   audioContext: AudioContext | null,
@@ -78,14 +56,14 @@ export function usePitchDetection(
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   
-  // Voting system: sliding window buffer of recent detections
-  const voteBufferRef = useRef<PitchResult[]>([]);
+  // Consecutive frame consistency tracking
+  const consistencyRef = useRef<ConsistencyState>({
+    note: null,
+    count: 0,
+    lastPitch: null,
+  });
   
-  // Temporal debouncing: track when note was last changed
-  const lastNoteChangeTimeRef = useRef<number>(0);
-  const currentDisplayedNoteRef = useRef<string | null>(null);
-  
-  // Volume gate: track consecutive silent frames
+  // Silence tracking for clearing display
   const silentFrameCountRef = useRef<number>(0);
 
   const detect = useCallback(() => {
@@ -97,86 +75,83 @@ export function usePitchDetection(
     const detector = detectorRef.current;
     const sampleRate = audioContext.sampleRate;
 
+    // Get time-domain data for RMS calculation
     const dataArray = new Float32Array(analyser.fftSize);
     analyser.getFloatTimeDomainData(dataArray);
 
-    const rms = calculateRMS(dataArray);
-    const now = performance.now();
+    // Calculate LINEAR RMS (0 to 1 scale, NOT decibels)
+    const currentRMS = calculateRMS(dataArray);
 
-    // VOLUME GATE: Require current RMS to be at least 2x the calibrated noise floor RMS
-    // This prevents ghost notes from background noise
-    const effectiveNoiseFloorRMS = options.noiseFloorRMS !== null ? options.noiseFloorRMS : 0.001;
-    const volumeThreshold = effectiveNoiseFloorRMS * 2;
-    const isAboveThreshold = rms >= volumeThreshold;
-
-    // Check if we're above the volume gate threshold (sound detected)
-    if (isAboveThreshold) {
-      // Reset silence counter - we have sound
-      silentFrameCountRef.current = 0;
-      
-      const result = detector.findPitch(dataArray, sampleRate);
-
-      if (result) {
-        const { frequency, clarity } = result;
-        const noteResult = frequencyToNote(frequency);
-        const cents = calculateCents(frequency, noteResult.frequency);
-
-        const newPitch: PitchResult = {
-          frequency,
-          note: noteResult.note,
-          octave: noteResult.octave,
-          cents,
-          clarity,
-        };
-
-        // Add to vote buffer (sliding window)
-        voteBufferRef.current.push(newPitch);
-        if (voteBufferRef.current.length > VOTE_BUFFER_SIZE) {
-          voteBufferRef.current.shift();
-        }
-
-        // Get the winning note from voting
-        const winningPitch = getMostFrequentNote(voteBufferRef.current);
-        
-        if (winningPitch) {
-          const winningNoteKey = getNoteKey(winningPitch);
-          const timeSinceLastChange = now - lastNoteChangeTimeRef.current;
-          
-          // Temporal debouncing: only change displayed note if lock time has passed
-          // OR if this is the first note being displayed
-          if (
-            currentDisplayedNoteRef.current === null ||
-            currentDisplayedNoteRef.current === winningNoteKey ||
-            timeSinceLastChange >= NOTE_LOCK_TIME_MS
-          ) {
-            // Update displayed note
-            if (currentDisplayedNoteRef.current !== winningNoteKey) {
-              currentDisplayedNoteRef.current = winningNoteKey;
-              lastNoteChangeTimeRef.current = now;
-            }
-            setPitch(winningPitch);
-          }
-          // If locked and different note, keep displaying current note (no setPitch call)
-        }
-      }
-      // If detector returned null (low clarity), we just don't add to buffer
-      // The voting system will naturally smooth over occasional misses
-      
-    } else {
-      // Below noise floor - VOLUME GATE
+    // NOISE GATE: Check if signal is above threshold BEFORE running pitch detector
+    // This is the primary defense against ghost notes
+    const noiseFloorRMS = options.noiseFloorRMS ?? DEFAULT_NOISE_FLOOR_RMS;
+    const gateThreshold = noiseFloorRMS * NOISE_GATE_MULTIPLIER;
+    
+    if (currentRMS < gateThreshold) {
+      // Below noise gate - DON'T run pitch detector at all
       silentFrameCountRef.current++;
       
       if (silentFrameCountRef.current >= SILENCE_FRAMES_TO_CLEAR) {
-        // Clear the vote buffer on sustained silence
-        voteBufferRef.current = [];
-        currentDisplayedNoteRef.current = null;
+        // Sustained silence - clear display and reset consistency
+        consistencyRef.current = { note: null, count: 0, lastPitch: null };
         setPitch(null);
       }
       // If not enough silent frames yet, keep displaying current note (natural decay)
+      
+      animationFrameRef.current = requestAnimationFrame(detect);
+      return;
+    }
+
+    // Above noise gate - reset silence counter and run pitch detector
+    silentFrameCountRef.current = 0;
+    
+    const result = detector.findPitch(dataArray, sampleRate);
+
+    if (result) {
+      const { frequency, clarity } = result;
+      
+      // Detector already filters for clarity > 0.9 and piano frequency range
+      const noteResult = frequencyToNote(frequency);
+      const cents = calculateCents(frequency, noteResult.frequency);
+      const noteKey = `${noteResult.note}${noteResult.octave}`;
+
+      const newPitch: PitchResult = {
+        frequency,
+        note: noteResult.note,
+        octave: noteResult.octave,
+        cents,
+        clarity,
+      };
+
+      // CONSECUTIVE FRAME CONSISTENCY CHECK
+      if (consistencyRef.current.note === noteKey) {
+        // Same note as before - increment count
+        consistencyRef.current.count++;
+        consistencyRef.current.lastPitch = newPitch;
+      } else {
+        // Different note - reset tracking
+        consistencyRef.current = {
+          note: noteKey,
+          count: 1,
+          lastPitch: newPitch,
+        };
+      }
+
+      // Only update UI if note has been consistent for required frames
+      if (consistencyRef.current.count >= CONSECUTIVE_FRAMES_REQUIRED) {
+        setPitch(consistencyRef.current.lastPitch);
+      }
+      // If not enough consecutive frames yet, keep previous display
+      
+    } else {
+      // Detector returned null (low clarity or out of frequency range)
+      // Reset consistency - can't build on unclear detections
+      consistencyRef.current = { note: null, count: 0, lastPitch: null };
+      // Don't clear display immediately - let silence threshold handle it
     }
 
     animationFrameRef.current = requestAnimationFrame(detect);
-  }, [audioContext, stream, options.noiseFloor]);
+  }, [audioContext, stream, options.noiseFloorRMS]);
 
   useEffect(() => {
     if (!audioContext || !stream) {
@@ -208,10 +183,8 @@ export function usePitchDetection(
         sourceRef.current = null;
       }
       detectorRef.current = null;
-      // Reset stabilization state
-      voteBufferRef.current = [];
-      currentDisplayedNoteRef.current = null;
-      lastNoteChangeTimeRef.current = 0;
+      // Reset all tracking state
+      consistencyRef.current = { note: null, count: 0, lastPitch: null };
       silentFrameCountRef.current = 0;
     };
   }, [audioContext, stream, detect]);

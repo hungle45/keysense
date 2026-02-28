@@ -1,70 +1,97 @@
 ---
 status: awaiting_human_verify
-trigger: "Pitch detection flashes too fast, is too sensitive, and returns to 'Play a note' immediately"
+trigger: "Ghost notes appearing when room is quiet. Noise floor showing as negative dB value confusing the logic. User requests complete rewrite of detection/calibration."
 created: 2026-02-28T10:00:00Z
-updated: 2026-02-28T10:22:00Z
+updated: 2026-03-01T10:15:00Z
 ---
 
 ## Current Focus
 
-hypothesis: CONFIRMED - lack of note persistence/debounce causes rapid state clearing
-test: User needs to verify fix by playing sustained notes
-expecting: Notes should display steadily during sustained play without flashing
-next_action: Request human verification
+hypothesis: CONFIRMED - dB-based noise floor logic was fundamentally flawed; implemented pure linear RMS with strict gate
+test: User needs to verify no ghost notes appear in quiet room
+expecting: "Play a note" displays steadily in silence, real notes detected when played
+next_action: Human verification of fix
 
 ## Symptoms
 
-expected: When playing a note (e.g., C3), tuner should show C3 steadily while note sustains
-actual: Note flashes briefly, jumps between notes (C3 → B3 → C3), then immediately returns to "Play a note" even while still playing
-errors: No console errors reported
-reproduction: Enable microphone, play any sustained note on piano
-started: Issue appeared after fixing the useAudioEngine hook lifting issue
+expected: In a quiet room, tuner should show "Play a note" without detecting random ghost notes
+actual: Random ghost notes appear when room is quiet. Noise floor is negative dB which confuses gate logic.
+errors: No errors, just incorrect behavior - ghost notes trigger on silence
+reproduction: Enable microphone, calibrate, sit in quiet room - random notes appear
+started: Ongoing issue despite previous fixes (2x RMS threshold, 0.9 clarity)
 
 ## Eliminated
+
+- hypothesis: Clarity threshold too strict
+  evidence: User confirms ghost notes appear even with strict clarity - issue is volume gate not detector
+  timestamp: 2026-02-28T10:10:00Z
+
+- hypothesis: dB-based threshold logic works with proper offset
+  evidence: Negative dB values create confusing comparisons; user explicitly requires linear RMS
+  timestamp: 2026-03-01T10:00:00Z
 
 ## Evidence
 
 - timestamp: 2026-02-28T10:05:00Z
   checked: src/lib/pitch/detector.ts lines 15-23
   found: Clarity threshold is hardcoded to > 0.9 (line 18). Returns null if clarity drops below.
-  implication: Piano notes with clarity 0.7-0.9 would be rejected, causing instant "Play a note" display
+  implication: Clarity filter is working but ghost notes still appear - issue is before detector runs
 
 - timestamp: 2026-02-28T10:05:00Z
-  checked: src/hooks/usePitchDetection.ts lines 42-62
-  found: NO note persistence/hold logic. setPitch(null) called immediately when db < threshold OR when detector returns null
-  implication: Single frame with low clarity causes immediate state change to null
+  checked: src/hooks/usePitchDetection.ts lines 106-110
+  found: Volume gate uses effectiveNoiseFloorRMS * 2 as threshold
+  implication: 2x multiplier may be insufficient; user requests 2.5x AND gate BEFORE pitch detector
 
-- timestamp: 2026-02-28T10:05:00Z
-  checked: src/hooks/usePitchDetection.ts line 42
-  found: Noise floor threshold is effectiveNoiseFloor + 10 (e.g., if noiseFloor is -60, threshold is -50dB)
-  implication: This seems reasonable but combined with 0.9 clarity creates double-filter that's too aggressive
+- timestamp: 2026-03-01T10:00:00Z
+  checked: src/hooks/useCalibration.ts lines 79-86
+  found: Uses 90th percentile of readings - may capture noise spikes rather than true average
+  implication: User specifically requests AVERAGE of RMS readings, not percentile
 
-- timestamp: 2026-02-28T10:06:00Z
-  checked: smoothingTimeConstant on line 76
-  found: Set to 0.8 which smooths the FFT data, but this doesn't help with clarity/note hold
-  implication: Smoothing helps FFT stability but doesn't prevent rapid null states
+- timestamp: 2026-03-01T10:00:00Z
+  checked: src/hooks/usePitchDetection.ts line 117
+  found: Pitch detector runs even on borderline signals, then gets filtered
+  implication: User requires gate to PREVENT detector from running at all on silence
 
-- timestamp: 2026-02-28T10:10:00Z
-  checked: pitchy playground (official demo)
-  found: Default clarity threshold is 95% (0.95), but crucially the playground FILTERS display rather than dropping state. All readings are recorded, filter happens at display time.
-  implication: CONFIRMED - our implementation drops state immediately on each frame, causing rapid flashing
+- timestamp: 2026-03-01T10:00:00Z
+  checked: src/lib/pitch/detector.ts line 25
+  found: Frequency bounds are 20-5000Hz, not piano range 27-4200Hz
+  implication: May detect infrasound or ultrasound artifacts outside piano range
 
-- timestamp: 2026-02-28T10:10:00Z
-  checked: pitchy README
-  found: Clarity is 0-1 scale, "low values indicate noise rather than true pitch". No specific guidance on thresholds.
-  implication: 0.9 threshold isn't unreasonable, but INSTANT state clearing is the real problem
+- timestamp: 2026-03-01T10:10:00Z
+  checked: src/hooks/useAudioEngine.ts lines 36-42
+  found: Media constraints already correctly set: echoCancellation=false, noiseSuppression=false, autoGainControl=false
+  implication: Requirement #3 already satisfied
 
 ## Resolution
 
-root_cause: TWO issues: (1) No note-hold/debounce logic - pitch immediately clears to null when a single frame drops below threshold, (2) Clarity threshold of 0.9 is on the stricter side for piano notes which can have varying clarity during sustain/decay. The PRIMARY issue is lack of hysteresis - a single bad frame shouldn't reset the display.
+root_cause: Multiple issues compounding: (1) Calibration used 90th percentile instead of average RMS, (2) Volume gate multiplier too low (2x vs needed 2.5x), (3) Detector ran on silence instead of being gated first, (4) Frequency bounds too wide (20-5000Hz vs 27-4200Hz piano range), (5) No consecutive frame consistency check
 fix: |
-  1. Lowered clarity threshold from 0.9 to 0.8 in detector.ts (more forgiving for piano harmonics)
-  2. Added note hold logic in usePitchDetection.ts:
-     - NOTE_HOLD_TIME_MS = 150ms: Holds last valid note for this duration after detection drops
-     - CONSECUTIVE_NULL_THRESHOLD = 3: Requires 3 consecutive null readings before clearing
-     - Tracks lastValidPitch, lastValidTime, and consecutiveNullCount via refs
-     - Only clears display when BOTH time AND count thresholds are exceeded
-verification: Build passes (tsc && vite build). Awaiting human verification.
+  Complete rewrite implementing all 5 user requirements:
+  
+  1. **useCalibration.ts** - Line 79-86: Changed from 90th percentile to AVERAGE linear RMS
+     - Now calculates: avgRMS = sum(rmsReadings) / length
+     - Provides stable baseline for noise gate
+  
+  2. **usePitchDetection.ts** - Complete rewrite:
+     - Noise gate multiplier: 2.5x (was 2x)
+     - Gate checks BEFORE pitch detector runs (was after)
+     - Pure linear RMS comparison (no dB conversion)
+     - 3-frame consecutive consistency check before UI update
+     - Clean separation of concerns with ConsistencyState tracking
+  
+  3. **detector.ts** - Lines 14-15, 33-37:
+     - Frequency bounds tightened: 27Hz-4200Hz (was 20-5000Hz)
+     - Matches piano range to reject infrasound/ultrasound artifacts
+  
+  4. **useAudioEngine.ts** - Already correct (no changes needed):
+     - autoGainControl: false
+     - echoCancellation: false
+     - noiseSuppression: false
+verification: |
+  - TypeScript compilation: PASSED
+  - Production build: PASSED
+  - Awaiting human verification in real environment
 files_changed:
-  - src/hooks/usePitchDetection.ts
-  - src/lib/pitch/detector.ts
+  - src/hooks/usePitchDetection.ts (complete rewrite)
+  - src/hooks/useCalibration.ts (percentile -> average)
+  - src/lib/pitch/detector.ts (frequency bounds tightened)
