@@ -1,15 +1,16 @@
 import { useState } from 'react';
-import { Settings, Home as HomeIcon, Mic } from 'lucide-react';
+import { Settings, Home as HomeIcon, Mic, Play } from 'lucide-react';
 import { MicrophoneButton } from '@/components/audio/MicrophoneButton';
 import { CalibrationView } from '@/components/audio/CalibrationView';
 import { TunerDisplay } from '@/components/tuner/TunerDisplay';
+import { GameScreen } from '@/screens/GameScreen';
 import { useAudioEngine } from '@/hooks/useAudioEngine';
 import { useCalibration } from '@/hooks/useCalibration';
 import { usePitchDetection } from '@/hooks/usePitchDetection';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-type Screen = 'home' | 'settings';
+type Screen = 'home' | 'settings' | 'game';
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
@@ -40,7 +41,7 @@ function App() {
       </header>
 
       <main className="flex-1 flex items-center justify-center p-4">
-        {currentScreen === 'home' ? (
+        {currentScreen === 'home' && (
           <HomeScreen 
             audioContext={audioContext}
             stream={stream}
@@ -50,10 +51,20 @@ function App() {
             noiseFloor={calibration.noiseFloor}
             noiseFloorRMS={calibration.noiseFloorRMS}
           />
-        ) : (
+        )}
+        {currentScreen === 'settings' && (
           <SettingsScreen 
             stream={stream}
             calibration={calibration}
+          />
+        )}
+        {currentScreen === 'game' && (
+          <GameScreenWrapper
+            audioContext={audioContext}
+            stream={stream}
+            isReady={isReady}
+            noiseFloor={calibration.noiseFloor}
+            noiseFloorRMS={calibration.noiseFloorRMS}
           />
         )}
       </main>
@@ -66,6 +77,14 @@ function App() {
         >
           <HomeIcon className="mr-2 h-5 w-5" />
           Tuner
+        </Button>
+        <Button
+          variant={currentScreen === 'game' ? 'secondary' : 'ghost'}
+          className="flex-1 rounded-none min-h-[44px]"
+          onClick={() => setCurrentScreen('game')}
+        >
+          <Play className="mr-2 h-5 w-5" />
+          Practice
         </Button>
         <Button
           variant={currentScreen === 'settings' ? 'secondary' : 'ghost'}
@@ -160,6 +179,24 @@ function SettingsScreen({ stream, calibration }: SettingsScreenProps) {
       <CalibrationView stream={stream} calibration={calibration} />
     </div>
   );
+}
+
+interface GameScreenWrapperProps {
+  audioContext: AudioContext | null;
+  stream: MediaStream | null;
+  isReady: boolean;
+  noiseFloor: number | null;
+  noiseFloorRMS: number | null;
+}
+
+function GameScreenWrapper({ audioContext, stream, isReady, noiseFloor, noiseFloorRMS }: GameScreenWrapperProps) {
+  const { pitch } = usePitchDetection(
+    isReady && audioContext ? audioContext : null,
+    isReady && stream ? stream : null,
+    { noiseFloor, noiseFloorRMS }
+  );
+
+  return <GameScreen pitch={pitch} />;
 }
 
 export default App;
