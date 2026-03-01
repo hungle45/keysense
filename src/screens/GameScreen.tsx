@@ -6,7 +6,7 @@ import { CountdownSplash } from '@/components/game/CountdownSplash';
 import { GrandStaff } from '@/components/game/GrandStaff';
 import { ScrollingNote } from '@/components/game/ScrollingNote';
 import { ResultsModal } from '@/components/game/ResultsModal';
-import { SCROLL_SPEEDS } from '@/types/game';
+import type { ScrollSpeed } from '@/types/game';
 import type { PitchResult } from '@/types/pitch';
 
 interface GameScreenProps {
@@ -21,6 +21,13 @@ function formatTime(ms: number): string {
   const seconds = totalSeconds % 60;
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
+
+// Spawn intervals tuned for 3-4 visible notes at each speed
+const SPAWN_INTERVALS: Record<ScrollSpeed, number> = {
+  slow: 1500,    // 1.5s at 50px/s
+  medium: 1000,  // 1.0s at 100px/s
+  fast: 750,     // 0.75s at 150px/s
+};
 
 export function GameScreen({ pitch, onBackToMenu }: GameScreenProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -66,10 +73,8 @@ export function GameScreen({ pitch, onBackToMenu }: GameScreenProps) {
   useEffect(() => {
     if (state.status !== 'running') return;
     
-    // Calculate spawn interval based on scroll speed
-    // Spawn when previous note is ~1/3 across the screen
-    const pixelsPerSecond = SCROLL_SPEEDS[state.config.scrollSpeed];
-    const spawnIntervalMs = (containerWidth / 3) / pixelsPerSecond * 1000;
+    // Use fixed intervals tuned for 3-4 visible notes at each speed
+    const spawnIntervalMs = SPAWN_INTERVALS[state.config.scrollSpeed];
     
     // Spawn first note immediately
     if (state.activeNotes.length === 0) {
@@ -83,7 +88,7 @@ export function GameScreen({ pitch, onBackToMenu }: GameScreenProps) {
     }, spawnIntervalMs);
     
     return () => clearInterval(interval);
-  }, [state.status, state.config.scrollSpeed, containerWidth, spawnNote, state.activeNotes.length]);
+  }, [state.status, state.config.scrollSpeed, spawnNote, state.activeNotes.length]);
   
   // Handle note scrolling past (mark as missed)
   const handleNoteMissed = useCallback((noteId: string) => {

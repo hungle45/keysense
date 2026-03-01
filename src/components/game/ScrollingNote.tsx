@@ -80,7 +80,7 @@ export function ScrollingNote({
   
   return (
     <div
-      className={`absolute w-6 h-4 rounded-full ${noteColor} transition-colors`}
+      className={`absolute w-5 h-5 rounded-full ${noteColor} transition-colors`}
       style={{
         left: xPosition,
         top: yPosition,
