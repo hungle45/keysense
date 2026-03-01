@@ -7,16 +7,16 @@
 
 ### Audio Foundation
 
-- [ ] **AUDIO-01**: User can grant microphone permission via browser prompt
-- [ ] **AUDIO-02**: AudioContext initializes on user interaction (button click)
-- [ ] **AUDIO-03**: Microphone stream captured via getUserMedia
-- [ ] **AUDIO-04**: AudioContext singleton prevents multiple instances
+- [x] **AUDIO-01**: User can grant microphone permission via browser prompt
+- [x] **AUDIO-02**: AudioContext initializes on user interaction (button click)
+- [x] **AUDIO-03**: Microphone stream captured via getUserMedia
+- [x] **AUDIO-04**: AudioContext singleton prevents multiple instances
 
 ### Calibration
 
-- [ ] **CALI-01**: User can run calibration to measure room noise floor
-- [ ] **CALI-02**: Calibration displays noise level in dB
-- [ ] **CALI-03**: Calibration detects and displays usable frequency range for piano
+- [x] **CALI-01**: User can run calibration to measure room noise floor
+- [x] **CALI-02**: Calibration displays noise level in dB
+- [x] **CALI-03**: Calibration detects and displays usable frequency range for piano
 
 ### Pitch Detection
 
@@ -50,10 +50,10 @@
 
 ### Mobile UX
 
-- [ ] **MOBILE-01**: App functions on mobile Safari (iOS)
-- [ ] **MOBILE-02**: App functions on mobile Chrome (Android)
-- [ ] **MOBILE-03**: UI adapts to portrait orientation
-- [ ] **MOBILE-04**: Touch targets are minimum 44x44px
+- [x] **MOBILE-01**: App functions on mobile Safari (iOS)
+- [x] **MOBILE-02**: App functions on mobile Chrome (Android)
+- [x] **MOBILE-03**: UI adapts to portrait orientation
+- [x] **MOBILE-04**: Touch targets are minimum 44x44px
 
 ## v2 Requirements
 
@@ -83,13 +83,13 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUDIO-01 | Phase 1 | Pending |
-| AUDIO-02 | Phase 1 | Pending |
-| AUDIO-03 | Phase 1 | Pending |
-| AUDIO-04 | Phase 1 | Pending |
-| CALI-01 | Phase 1 | Pending |
-| CALI-02 | Phase 1 | Pending |
-| CALI-03 | Phase 1 | Pending |
+| AUDIO-01 | Phase 1 | Complete |
+| AUDIO-02 | Phase 1 | Complete |
+| AUDIO-03 | Phase 1 | Complete |
+| AUDIO-04 | Phase 1 | Complete |
+| CALI-01 | Phase 1 | Complete |
+| CALI-02 | Phase 1 | Complete |
+| CALI-03 | Phase 1 | Complete |
 | PITCH-01 | Phase 2 | Pending |
 | PITCH-02 | Phase 2 | Pending |
 | PITCH-03 | Phase 2 | Pending |
@@ -108,10 +108,10 @@
 | NOTA-01 | Phase 5 | Pending |
 | NOTA-02 | Phase 5 | Pending |
 | NOTA-03 | Phase 5 | Pending |
-| MOBILE-01 | Phase 1 | Pending |
-| MOBILE-02 | Phase 1 | Pending |
-| MOBILE-03 | Phase 1 | Pending |
-| MOBILE-04 | Phase 1 | Pending |
+| MOBILE-01 | Phase 1 | Complete |
+| MOBILE-02 | Phase 1 | Complete |
+| MOBILE-03 | Phase 1 | Complete |
+| MOBILE-04 | Phase 1 | Complete |
 
 **Coverage:**
 - v1 requirements: 28 total

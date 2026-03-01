@@ -12,7 +12,7 @@
 - [ ] **Phase 1: Audio Foundation** - Microphone capture, calibration, mobile UX foundation
 - [x] **Phase 2: Pitch Detection** - Real-time pitch detection with tuner display (Complete: 2026-02-28)
 - [x] **Phase 3: Game Loop** - Timed practice sessions with scoring (Complete: 2026-03-01)
-- [ ] **Phase 3.1: Polish** - UAT fixes + Wait Mode for hit detection
+- [x] **Phase 3.1: Polish** - UAT fixes + Wait Mode for hit detection (completed 2026-03-01)
 - [ ] **Phase 4: Rhythm Module** - BPM-based timing practice
 - [ ] **Phase 5: Notation Viewer** - ABC notation rendering
 
@@ -114,7 +114,7 @@
 5. No false positives from noise, coughs, or octave jump artifacts
 6. Visual feedback shows green only on success, no red flashes for glitches
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 **Plan list:**
 - [ ] 03.1-01-PLAN.md — UI fixes: grand staff display, circular notes, timer countdown
@@ -166,7 +166,7 @@
 | 1. Audio Foundation | 1/1 | Complete | 2026-02-28 |
 | 2. Pitch Detection | 1/1 | Complete | 2026-02-28 |
 | 3. Game Loop | 3/3 | Complete | 2026-03-01 |
-| 3.1. Polish | 0/2 | Not started | - |
+| 3.1. Polish | 0/2 | Complete    | 2026-03-01 |
 | 4. Rhythm Module | 0/1 | Not started | - |
 | 5. Notation Viewer | 0/1 | Not started | - |
 
