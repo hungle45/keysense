@@ -11,7 +11,8 @@
 
 - [ ] **Phase 1: Audio Foundation** - Microphone capture, calibration, mobile UX foundation
 - [x] **Phase 2: Pitch Detection** - Real-time pitch detection with tuner display (Complete: 2026-02-28)
-- [ ] **Phase 3: Game Loop** - Timed practice sessions with scoring
+- [x] **Phase 3: Game Loop** - Timed practice sessions with scoring (Complete: 2026-03-01)
+- [ ] **Phase 3.1: Polish** - UAT fixes + Wait Mode for hit detection
 - [ ] **Phase 4: Rhythm Module** - BPM-based timing practice
 - [ ] **Phase 5: Notation Viewer** - ABC notation rendering
 
@@ -87,12 +88,37 @@
 5. Session displays elapsed time and remaining time in real-time
 6. Session ends with a score summary showing accuracy percentage
 
-**Plans:** 4 plans
+**Plans:** 3 plans
 
 **Plan list:**
 - [x] 03-01-PLAN.md — Game types, state machine (useGameSession), note generation
 - [x] 03-02-PLAN.md — Session config UI, countdown splash, grand staff visualization
 - [x] 03-03-PLAN.md — Hit detection integration, results modal, full game wiring
+
+---
+
+### Phase 3.1: Polish
+
+**Goal:** Fix UAT issues and implement Wait Mode for robust hit detection
+
+**Depends on:** Phase 3 (must be complete to fix its issues)
+
+**Requirements:** None (polish phase addressing gaps in GAME-03, GAME-04, GAME-05)
+
+**Success Criteria** (what must be TRUE):
+
+1. Grand staff displays at proper width with correctly positioned treble/bass clefs
+2. Multiple circular notes (3-4) visible on screen at once
+3. Timer counts down from session duration to 0 in real-time
+4. Wait Mode hit detection only triggers on sustained (150ms) correct notes with strong input (volume + clarity gates)
+5. No false positives from noise, coughs, or octave jump artifacts
+6. Visual feedback shows green only on success, no red flashes for glitches
+
+**Plans:** 2 plans
+
+**Plan list:**
+- [ ] 03.1-01-PLAN.md — UI fixes: grand staff display, circular notes, timer countdown
+- [ ] 03.1-02-PLAN.md — Wait Mode: volume+clarity gates, 150ms sustain, decay filtering
 
 ---
 
@@ -139,7 +165,8 @@
 |-------|----------------|--------|-----------|
 | 1. Audio Foundation | 1/1 | Complete | 2026-02-28 |
 | 2. Pitch Detection | 1/1 | Complete | 2026-02-28 |
-| 3. Game Loop | 3/4 | In Progress | - |
+| 3. Game Loop | 3/3 | Complete | 2026-03-01 |
+| 3.1. Polish | 0/2 | Not started | - |
 | 4. Rhythm Module | 0/1 | Not started | - |
 | 5. Notation Viewer | 0/1 | Not started | - |
 
