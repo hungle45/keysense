@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-02-28T22:37:21.983Z"
+status: planning
+last_updated: "2026-03-01T12:00:00.000Z"
 progress:
-  total_phases: 3
+  total_phases: 6
   completed_phases: 3
-  total_plans: 5
+  total_plans: 7
   completed_plans: 5
 ---
 
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Real-time pitch detection and practice feedback for piano students using only a smartphone microphone.
-**Current focus:** Phase 3 - Game Loop
+**Current focus:** Phase 3.1 - Polish (UAT fixes + Wait Mode)
 
 ## Current Position
 
-Phase: 3 of 5 (Game Loop)
-Plan: 3 of 4 - Completed
-Status: Executing plans
-Last activity: 2026-02-28 — Completed 03-03-PLAN.md
+Phase: 3.1 of 6 (Polish)
+Plan: 0 of 2 - Planning
+Status: Phase created, awaiting plan creation
+Last activity: 2026-03-01 — Created Phase 3.1 after UAT
 
-Progress: [████████░░] 80%
+Progress: [██████░░░░] 60%
 
 ## Performance Metrics
 
@@ -67,6 +67,8 @@ Recent decisions affecting current work:
 - [03-03]: Exact octave matching required (C4 ≠ C3)
 - [03-03]: 200ms sustain requirement for hit detection
 - [03-03]: Wrong notes are silent (no negative feedback)
+- [03.1]: Wait Mode for hit detection - sustained input with volume+clarity gates
+- [03.1]: Reduced sustain requirement to 150ms for better responsiveness
 
 ### Pending Todos
 
@@ -74,10 +76,11 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-None yet.
+- Phase 3 UAT found 4 issues (addressed in Phase 3.1)
 
 ## Session Continuity
 
-Last session: 2026-02-28
-Stopped at: Completed 03-03-PLAN.md
-Resume file: None
+Last session: 2026-03-01
+Stopped at: Created Phase 3.1 after UAT
+Resume file: .planning/phases/03.1-polish/03.1-GOAL.md
+Next action: Create plans with `/gsd-plan-phase 3.1`
