@@ -1,9 +1,10 @@
 ---
-status: diagnosed
+status: resolved
 phase: 03-game-loop
 source: [03-01-SUMMARY.md, 03-02-SUMMARY.md, 03-03-SUMMARY.md]
 started: 2026-03-01T05:35:00Z
-updated: 2026-03-01T05:50:00Z
+updated: 2026-03-01T05:54:00Z
+resolved_by: phase-03.1-polish
 ---
 
 ## Current Test
@@ -71,11 +72,12 @@ skipped: 0
 ## Gaps
 
 - truth: "Grand staff displays with proper width and correctly positioned treble/bass clefs"
-  status: failed
+  status: resolved
   reason: "User reported: it display but the width of the grand staff is too short and the treble clef and bas cleft weren't placed at the correct place"
   severity: major
   test: 4
   root_cause: "Clefs use Unicode characters with inadequate CSS font sizing (text-2xl) and hardcoded Y positions that don't align with staff line coordinates calculated from STAFF_CONFIG"
+  resolution: "Fixed in 03.1-01: added min-w-[120px], corrected clef Y positions (treble y=58, bass y=108), increased font to text-5xl, timing line uses stroke-red-500"
   artifacts:
     - path: src/components/game/GrandStaff.tsx
       issue: "Treble clef y=35 doesn't align with staff lines; Bass clef y=105 misaligned; text-2xl font size too small for Unicode musical symbols; no minimum width constraint"
@@ -87,11 +89,12 @@ skipped: 0
   debug_session: ".planning/debug/grandstaff-display.md"
 
 - truth: "Multiple notes visible on screen at once, notes are circular shape"
-  status: failed
+  status: resolved
   reason: "User reported: I see the notes move leftward but there is just only one note at a time. I think we should render some notes at a time. also I think notes should be circle but they're not"
   severity: major
   test: 5
   root_cause: "Spawn interval too long (containerWidth/3 formula = ~2.7s) and note shape is oval (w-6 h-4 = 24x16px) instead of circle"
+  resolution: "Fixed in 03.1-01: changed note to w-5 h-5 (circle), fixed spawn intervals (1500/1000/750ms by speed) for 3-4 visible notes"
   artifacts:
     - path: src/screens/GameScreen.tsx
       issue: "Line 72 - spawn interval calculation (containerWidth / 3) produces ~2.7 second gaps"
@@ -103,11 +106,12 @@ skipped: 0
   debug_session: ".planning/debug/notes-single-not-circle.md"
 
 - truth: "Timer counts down in real-time during game session"
-  status: failed
+  status: resolved
   reason: "User reported: it didn't count down, showing 1:00 all the time"
   severity: major
   test: 6
   root_cause: "useMemo dependencies for remainingMs are static during gameplay (startTime set once, status stays 'running'), so no re-renders occur to recalculate the countdown value"
+  resolution: "Fixed in 03.1-01: added TIMER_TICK action dispatched every 1000ms, added currentTime to useMemo deps to trigger recalculation"
   artifacts:
     - path: src/hooks/useGameSession.ts
       issue: "remainingMs useMemo depends on values that don't change during running state; session interval only checks end condition without dispatching state updates"
@@ -116,11 +120,12 @@ skipped: 0
   debug_session: ".planning/debug/timer-display-not-counting.md"
 
 - truth: "Timing line visible and hit detection registers correct notes"
-  status: failed
+  status: resolved
   reason: "User reported: I didn't see the timiming line and the note detector didn't work well, we will discuss for the logic to handle this"
   severity: major
   test: 7
   root_cause: "Timing line uses invalid CSS variable hsl(var(--primary)) - Tailwind v4 uses --color-primary with oklch format, not HSL; stroke fails to render"
+  resolution: "Fixed in 03.1-01 (timing line stroke-red-500) and 03.1-02 (Wait Mode: Strong Input Gate with volume+clarity thresholds, 150ms sustain, decay detection)"
   artifacts:
     - path: src/components/game/GrandStaff.tsx
       issue: "Line 58: stroke='hsl(var(--primary))' uses non-existent CSS variable"
