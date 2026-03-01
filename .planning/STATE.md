@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-last_updated: "2026-03-01T12:00:00.000Z"
+status: executing
+last_updated: "2026-03-01T05:50:09Z"
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 7
-  completed_plans: 5
+  total_plans: 9
+  completed_plans: 7
 ---
 
 # Project State
@@ -23,27 +23,28 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 3.1 of 6 (Polish)
-Plan: 0 of 2 - Planning
-Status: Phase created, awaiting plan creation
-Last activity: 2026-03-01 — Created Phase 3.1 after UAT
+Plan: 2 of 2 - Complete
+Status: Phase 3.1 complete
+Last activity: 2026-03-01 — Completed Wait Mode hit detection
 
-Progress: [██████░░░░] 60%
+Progress: [███████░░░] 70%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
+- Total plans completed: 7
 - Average duration: ~4 min
-- Total execution time: ~23 min
+- Total execution time: ~29 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 03-game-loop | 3 | 11 min | ~4 min |
+| 03.1-polish | 2 | 6 min | ~3 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-01 (3 min), 03-02 (3 min), 03-03 (5 min)
+- Last 5 plans: 03-02 (3 min), 03-03 (5 min), 03.1-01 (3 min), 03.1-02 (3 min)
 - Trend: On track
 
 *Updated after each plan completion*
@@ -69,6 +70,8 @@ Recent decisions affecting current work:
 - [03-03]: Wrong notes are silent (no negative feedback)
 - [03.1]: Wait Mode for hit detection - sustained input with volume+clarity gates
 - [03.1]: Reduced sustain requirement to 150ms for better responsiveness
+- [03.1-02]: Strong Input Gate: RMS >= 0.01, clarity >= 0.85
+- [03.1-02]: Decay detection at 30% RMS drop filters octave artifacts
 
 ### Pending Todos
 
@@ -76,11 +79,11 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- Phase 3 UAT found 4 issues (addressed in Phase 3.1)
+- Phase 3 UAT found 4 issues (addressed in Phase 3.1) ✓
 
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Created Phase 3.1 after UAT
-Resume file: .planning/phases/03.1-polish/03.1-GOAL.md
-Next action: Create plans with `/gsd-plan-phase 3.1`
+Stopped at: Completed 03.1-02-PLAN.md (Wait Mode hit detection)
+Resume file: .planning/phases/03.1-polish/03.1-02-SUMMARY.md
+Next action: Verify with `/gsd-verify-work 3.1` or proceed to Phase 4
