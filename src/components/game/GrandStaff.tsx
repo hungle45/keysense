@@ -35,17 +35,19 @@ export function GrandStaff({ children, className }: GrandStaffProps) {
   const totalHeight = STAFF_CONFIG.staffHeight * 2 + STAFF_CONFIG.gap + 40; // Extra padding
 
   return (
-    <div className={`relative w-full overflow-hidden ${className}`} style={{ height: totalHeight }}>
+    <div className={`relative w-full min-w-[120px] overflow-hidden ${className}`} style={{ height: totalHeight }}>
       <svg className="absolute inset-0 w-full h-full">
         {/* Treble staff (top) */}
         <g className="treble-staff">
-          <text x="10" y="35" className="text-2xl fill-foreground">&#119070;</text>
+          {/* Treble clef: G-line is 2nd from bottom = line index 3 = y=50, adjust up for visual centering */}
+          <text x="15" y="58" className="text-5xl fill-foreground">&#119070;</text>
           {renderStaffLines(20)}
         </g>
         
         {/* Bass staff (bottom) */}
         <g className="bass-staff">
-          <text x="10" y={20 + STAFF_CONFIG.staffHeight + STAFF_CONFIG.gap + 15} className="text-2xl fill-foreground">&#119074;</text>
+          {/* Bass clef: F-line is 4th from bottom = line index 1 = y=100, adjust for visual centering */}
+          <text x="15" y="108" className="text-5xl fill-foreground">&#119074;</text>
           {renderStaffLines(20 + STAFF_CONFIG.staffHeight + STAFF_CONFIG.gap)}
         </g>
         
@@ -55,9 +57,8 @@ export function GrandStaff({ children, className }: GrandStaffProps) {
           x2={STAFF_CONFIG.timingLinePosition}
           y1="0"
           y2={totalHeight}
-          stroke="hsl(var(--primary))"
           strokeWidth="3"
-          className="timing-line"
+          className="stroke-red-500"
         />
       </svg>
       
