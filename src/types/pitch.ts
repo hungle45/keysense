@@ -4,4 +4,5 @@ export interface PitchResult {
   octave: number;
   cents: number;
   clarity: number;
+  rms: number;  // Volume level for hit detection
 }

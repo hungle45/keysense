@@ -80,6 +80,7 @@ export function usePitchDetection(
         octave: noteResult.octave,
         cents,
         clarity,
+        rms: currentRMS,  // Include RMS for hit detection
       });
     } else {
       // Pitch detector returned null (low clarity or out of range)
