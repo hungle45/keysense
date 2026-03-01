@@ -34,6 +34,7 @@ const initialState: GameState = {
   noteHistory: [],
   hits: 0,
   misses: 0,
+  currentTime: Date.now(),
 };
 
 /**
@@ -61,6 +62,9 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         ...state, 
         countdownValue: Math.max(0, state.countdownValue - 1) 
       };
+      
+    case 'TIMER_TICK':
+      return { ...state, currentTime: action.time };
       
     case 'START_SESSION':
       return { 
@@ -167,7 +171,7 @@ export function useGameSession() {
       return state.config.duration;
     }
     return Math.max(0, state.startTime + state.config.duration - Date.now());
-  }, [state.status, state.startTime, state.config.duration]);
+  }, [state.status, state.startTime, state.config.duration, state.currentTime]);
   
   // Compute accuracy percentage from hits and misses
   const accuracy = useMemo(() => {
@@ -201,6 +205,14 @@ export function useGameSession() {
       }
     },
     state.status === 'running' ? 100 : null
+  );
+  
+  // Timer display: update currentTime to trigger re-renders for countdown display
+  useInterval(
+    () => {
+      dispatch({ type: 'TIMER_TICK', time: Date.now() });
+    },
+    state.status === 'running' ? 1000 : null
   );
   
   // Action: Update session configuration (before starting)

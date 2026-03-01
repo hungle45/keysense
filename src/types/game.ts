@@ -119,6 +119,8 @@ export interface GameState {
   hits: number;
   /** Count of missed notes */
   misses: number;
+  /** Updated periodically to trigger timer re-renders */
+  currentTime: number;
 }
 
 /**
@@ -132,6 +134,8 @@ export type GameAction =
   | { type: 'START_COUNTDOWN' }
   /** Decrement the countdown value by 1 */
   | { type: 'COUNTDOWN_TICK' }
+  /** Update current time to trigger timer re-renders */
+  | { type: 'TIMER_TICK'; time: number }
   /** Transition from countdown to running (start the session) */
   | { type: 'START_SESSION' }
   /** Add a new target note to the active notes */
